@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API webhook sample — Crom Services</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #1b1b1b;
+        --muted: #5c5c5c;
+        --line: #d8d8d8;
+        --bg: #f7f5f1;
+        --card: #fff;
+        --accent: #1f4d3a;
+        --warn: #7a3e12;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #f3efe6;
+          --muted: #b5afa3;
+          --line: #3a3935;
+          --bg: #161513;
+          --card: #201f1c;
+          --accent: #8fbfa6;
+          --warn: #e0b089;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.55;
+      }
+      main {
+        max-width: 44rem;
+        margin: 0 auto;
+        padding: 2.5rem 1.25rem 4rem;
+      }
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin: 0 0 0.5rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2rem 0 0.6rem;
+      }
+      p,
+      li {
+        color: var(--ink);
+      }
+      .muted,
+      .lede {
+        color: var(--muted);
+      }
+      a {
+        color: var(--accent);
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        margin: 1rem 0;
+      }
+      .secret {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.95rem;
+        word-break: break-all;
+      }
+      pre {
+        overflow-x: auto;
+        background: #111;
+        color: #f3efe6;
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+        font-size: 0.82rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.9em;
+      }
+      .warn {
+        color: var(--warn);
+      }
+      footer {
+        margin-top: 2.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="muted">Crom Services · public sample crumb</p>
+      <h1>API webhook sample</h1>
+      <p class="lede">
+        Hosted proof for
+        <a href="https://github.com/CromServices/api-webhook-sample">CromServices/api-webhook-sample</a>.
+        Bid paste can link a URL that responds — not only the GitHub clone.
+      </p>
+
+      <div class="card">
+        <p><strong>Live demo host</strong></p>
+        <p>
+          <a href="https://crom-api-webhook-demo.fly.dev">https://crom-api-webhook-demo.fly.dev</a><br />
+          Health:
+          <a href="https://crom-api-webhook-demo.fly.dev/health">https://crom-api-webhook-demo.fly.dev/health</a>
+        </p>
+        <p class="warn">
+          Sample crumb only. This is a disposable public demo, not a forever-host claim for client workloads.
+          Rotate the demo secret if it is ever reused beyond this sample.
+        </p>
+      </div>
+
+      <h2>Published demo secret</h2>
+      <p>
+        Public sample value only — not a client secret, not production. Set on the host as
+        <code>WEBHOOK_SECRET</code>. Fail-closed HMAC is unchanged: bad or missing
+        <code>X-Signature-256</code> returns 401.
+      </p>
+      <div class="card secret">crom-demo-webhook-secret-v1</div>
+
+      <h2>GET /health → 200</h2>
+      <pre><code>curl -sS https://crom-api-webhook-demo.fly.dev/health
+# {"ok":true}</code></pre>
+
+      <h2>POST /webhook with valid HMAC → 200</h2>
+      <p>
+        Header is <code>X-Signature-256</code> over the <em>raw</em> JSON body (hex, or
+        <code>sha256=</code> prefix). Fixed body used below:
+        <code>{"event":"ping"}</code>.
+      </p>
+      <p>Ready curl with a precomputed signature for that body and the published secret:</p>
+      <pre><code>curl -sS -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' \
+  -H 'x-signature-256: sha256=2f95da3b8a47b656b7e8a980a32916dce258b449cf738632c5ffac988b6f3e9c' \
+  --data '{"event":"ping"}'
+# {"received":true}</code></pre>
+      <p>Compute the same hex yourself:</p>
+      <pre><code>printf '%s' '{"event":"ping"}' \
+  | openssl dgst -sha256 -hmac 'crom-demo-webhook-secret-v1' -hex \
+  | awk '{print $NF}'</code></pre>
+
+      <h2>POST /webhook fail-closed → 401</h2>
+      <p>Missing signature:</p>
+      <pre><code>curl -sS -o /dev/stderr -w '%{http_code}\n' \
+  -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' \
+  --data '{"event":"ping"}'
+# {"error":"invalid signature"}
+# 401</code></pre>
+      <p>Bad signature:</p>
+      <pre><code>curl -sS -o /dev/stderr -w '%{http_code}\n' \
+  -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' \
+  -H 'x-signature-256: sha256=0000000000000000000000000000000000000000000000000000000000000000' \
+  --data '{"event":"ping"}'
+# {"error":"invalid signature"}
+# 401</code></pre>
+
+      <h2>What this is not</h2>
+      <ul>
+        <li>Not a production webhook receiver for client systems.</li>
+        <li>Not a Crom forever-host for client workloads.</li>
+        <li>Not a place to store real client secrets.</li>
+      </ul>
+
+      <footer>
+        MIT · Crom Services · Perth WA · Remote across Australia<br />
+        Clone:
+        <a href="https://github.com/CromServices/api-webhook-sample">github.com/CromServices/api-webhook-sample</a>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,8 +1,17 @@
 import express, { type Request, type Response } from "express";
 import { verifyHmacHeader } from "./verify.ts";
 
+/**
+ * Published public sample secret for the disposable hosted demo.
+ * Rotate-able documentation value only — never a client or production secret.
+ */
+export const DEMO_WEBHOOK_SECRET = "crom-demo-webhook-secret-v1";
+
+/** Fixed body used in the public docs curl examples. */
+export const DEMO_WEBHOOK_BODY = '{"event":"ping"}';
+
 export type AppOptions = {
-  /** Shared secret for HMAC verification (sample default for local demos) */
+  /** Shared secret for HMAC verification (published demo default when unset) */
   webhookSecret: string;
 };
 
