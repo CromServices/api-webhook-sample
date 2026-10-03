@@ -1,9 +1,12 @@
 node_modules
+dist
 .git
 .github
-docs
 test
 *.md
+.env
+.env.*
 .gitignore
 LICENSE
 .cursor
+docs

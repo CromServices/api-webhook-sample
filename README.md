@@ -1,82 +1,74 @@
-# API webhook sample — Crom Services
+# API webhook sample · Crom Services
 
-**Live demo:** [https://crom-api-webhook-demo.fly.dev](https://crom-api-webhook-demo.fly.dev)  
-**Health:** [https://crom-api-webhook-demo.fly.dev/health](https://crom-api-webhook-demo.fly.dev/health)  
-**Docs (curl + published demo secret):** [https://cromservices.github.io/api-webhook-sample/](https://cromservices.github.io/api-webhook-sample/)
+A scoped Express webhook receiver: `POST /webhook` checks an HMAC-SHA256 signature over the raw body and replies 200 or 401.
 
-Public sample of how Crom Services approaches small API and webhook work.
+<!-- Built on CromServices/crom-ts-api-starter at b2cd23a (package.json "starter.config"). Shared files come from the starter; do not edit them here first. -->
 
-This folder demonstrates a minimal Express TypeScript endpoint that verifies a shared-secret header on POST /webhook and returns 200 on success or 401 on failure.
-Portfolio overflow sample only — not a client system.
+## What it is
 
-The hosted URL is a **sample crumb**: a disposable public proof that bid paste can link a responding endpoint, not a forever-host for client workloads.
+A public sample of how Crom Services approaches small API and webhook work. It is for illustration only, not a client system, and it holds no real data. The only secret is the published demo value `crom-demo-webhook-secret-v1`.
 
-## Purpose
+- `GET /` serves a short landing page on the shared Crom theme.
+- `GET /health` returns `{"ok":true}`.
+- `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A match returns `200 {"received":true}`; a missing or wrong signature, or an empty secret, returns `401` (fail-closed).
 
-- Clear, testable request verification pattern
-- Illustrates Crom Services capability for API overflow and small builds
-- Published demo secret only (`crom-demo-webhook-secret-v1`); nothing that belongs to a client lives in this repo
+| Path | Purpose |
+|---|---|
+| `src/verify.ts` | Sign and verify helpers (timing-safe compare) |
+| `src/app.ts` | `createApp()`: `GET /`, `GET /health`, `POST /webhook` with raw-body capture |
+| `src/landing.ts` | Landing page HTML (pinned crom-shared theme and footer) |
+| `src/config.ts` | Reads `starter.config` from `package.json` (from the starter) |
+| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`) |
+| `test/` | `node:test` suites (verify, HTTP, landing page) |
+| `docs/` | GitHub Pages walkthrough with copy-paste curl against the live demo |
+| `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
 
-## Stack
+## What it proves
 
-- TypeScript and Node.js 18+
-- Express
-- node:crypto for HMAC-SHA256 with timing-safe compare
-- Tests via node:test (tsx loader)
-- Hostable via Dockerfile + Fly (`fly.toml`)
+- One HMAC-verified webhook endpoint, done the careful way: signature over the raw body, timing-safe compare, fail-closed on anything missing.
+- The same toolchain as every Crom Services TypeScript API: strict TypeScript, `node:test`, a multi-stage `Dockerfile` and `fly.toml`.
 
-## Layout
+Does not prove: payment flows, retries or a production queue.
 
-- src/verify.ts — sign and verify helpers
-- src/app.ts — Express app with GET /health and POST /webhook
-- src/server.ts — listen entrypoint (`PORT` / `HOST` / `WEBHOOK_SECRET`)
-- test/webhook.test.ts — unit and HTTP checks
-- docs/ — GitHub Pages site with copy-paste curl against the live demo
-- Dockerfile, fly.toml — disposable demo host
+## Live link
 
-## How to run
-
-Install dependencies with the package manager, then execute the test script.
-Optional: start the local server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value `crom-demo-webhook-secret-v1`.
-
-Header expected: `X-Signature-256` — raw hex or `sha256=` prefix over the raw JSON body.
-
-Fail-closed: missing or invalid signatures return 401. An empty secret is rejected.
+- Demo: https://crom-api-webhook-demo.fly.dev
+- Health: https://crom-api-webhook-demo.fly.dev/health
+- Docs (curl and the published demo secret): https://cromservices.github.io/api-webhook-sample/
 
 ```bash
 curl -sS https://crom-api-webhook-demo.fly.dev/health
 # {"ok":true}
 ```
 
-Copy-paste POST examples (valid HMAC and 401 fail-closed) are on the [docs page](https://cromservices.github.io/api-webhook-sample/).
+## Run in 3 commands
 
-## Hosted demo (Fly)
-
-Intended app: `crom-api-webhook-demo` in `syd`. First-time create and deploy (requires a Fly token locally; this repo does not ship one):
+Needs Node 20 or newer.
 
 ```bash
-fly apps create crom-api-webhook-demo --org personal
-fly deploy
+npm install
+npm test
+npm run dev        # http://localhost:3000/
 ```
 
-`WEBHOOK_SECRET` is documented in `fly.toml` as the public sample value. Rotate with `fly secrets set WEBHOOK_SECRET=...` if the published demo secret changes. Optional GitHub Action `.github/workflows/fly.yml` deploys on `main` when the `FLY_API_TOKEN` repository secret is set.
+`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value.
 
-## GitHub Pages
+Deploy: a push to `main` runs `.github/workflows/fly.yml`, which deploys to Fly when the `FLY_API_TOKEN` repository secret is set (and skips cleanly when it is not). `docs/` is published by `.github/workflows/pages.yml`.
 
-Docs live in `docs/`. Enable Pages in the repository settings: **Source = GitHub Actions** (workflow `.github/workflows/pages.yml`), or **Deploy from a branch** → `main` / `/docs`.
+## Reuse for a new job
 
-## Capability
+1. **Start from the template**: use [CromServices/crom-ts-api-starter](https://github.com/CromServices/crom-ts-api-starter) and set `starter.config.ref` in `package.json` to the starter commit you started from.
+2. **Bring the webhook code**: copy `src/verify.ts` and the `/webhook` route from `src/app.ts`, and set the signature header name and secret source for the job's sender.
+3. **Set the app name** in `fly.toml` and keep secrets in `fly secrets set WEBHOOK_SECRET=...`, never in the repo.
+4. **Deploy** and put the URL under **Live link**.
 
-- Code and PR review packs
-- Small builds and patches as PRs
-- API and webhook work
+## Footer
 
-Crom Services · Perth WA · Remote across Australia
-Trading as Crom Services
+---
 
-Site: https://cromservices.github.io/job-page-sample/packs/
-Contact: cromservices@gmail.com
+Crom Services · Australia · cromservices@gmail.com
+Site: https://cromservices.com.au · Packs: https://cromservices.github.io/job-page-sample/packs/
 
-## License
+<a href="https://cromservices.com.au"><picture><source media="(prefers-color-scheme: dark)" srcset="https://cromservices.com.au/brand/credit/crom-credit-lockup-dark@2x.png"><img src="https://cromservices.com.au/brand/credit/crom-credit-lockup-light@2x.png" width="175" height="20" alt="Built by Crom Services"></picture></a>
 
-MIT — see LICENSE.
+MIT, see LICENSE.

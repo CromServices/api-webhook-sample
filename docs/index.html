@@ -1,127 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-AU">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>API webhook sample — Crom Services</title>
+    <title>API webhook sample · Crom Services</title>
+    <!-- Firm theme, pinned to crom-shared v1.0.0. Light by default, dark when the visitor's system prefers it. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.0/theme.css" />
     <style>
-      :root {
-        color-scheme: light dark;
-        --ink: #1b1b1b;
-        --muted: #5c5c5c;
-        --line: #d8d8d8;
-        --bg: #f7f5f1;
-        --card: #fff;
-        --accent: #1f4d3a;
-        --warn: #7a3e12;
+      /* Layout for code blocks only; every colour comes from theme.css tokens. */
+      .doc h2 { margin: 40px 0 12px; }
+      .doc pre {
+        overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+        background: var(--soft); color: var(--fg); border: 1px solid var(--border);
+        border-radius: var(--radius-media); padding: 14px 16px; font-size: 0.88rem; line-height: 1.5;
       }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --ink: #f3efe6;
-          --muted: #b5afa3;
-          --line: #3a3935;
-          --bg: #161513;
-          --card: #201f1c;
-          --accent: #8fbfa6;
-          --warn: #e0b089;
-        }
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-        background: var(--bg);
-        color: var(--ink);
-        line-height: 1.55;
-      }
-      main {
-        max-width: 44rem;
-        margin: 0 auto;
-        padding: 2.5rem 1.25rem 4rem;
-      }
-      h1,
-      h2 {
-        line-height: 1.2;
-      }
-      h1 {
-        font-size: 1.75rem;
-        margin: 0 0 0.5rem;
-      }
-      h2 {
-        font-size: 1.15rem;
-        margin: 2rem 0 0.6rem;
-      }
-      p,
-      li {
-        color: var(--ink);
-      }
-      .muted,
-      .lede {
-        color: var(--muted);
-      }
-      a {
-        color: var(--accent);
-      }
-      .card {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 10px;
-        padding: 1rem 1.1rem;
-        margin: 1rem 0;
-      }
-      .secret {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 0.95rem;
-        word-break: break-all;
-      }
-      pre {
-        overflow-x: auto;
-        background: #111;
-        color: #f3efe6;
-        border-radius: 8px;
-        padding: 0.9rem 1rem;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-      }
-      code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-size: 0.9em;
-      }
-      .warn {
-        color: var(--warn);
-      }
-      footer {
-        margin-top: 2.5rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--line);
-        color: var(--muted);
-        font-size: 0.92rem;
-      }
+      .doc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; }
+      .doc pre code { font-size: inherit; }
+      .doc .secret { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }
     </style>
   </head>
   <body>
-    <main>
-      <p class="muted">Crom Services · public sample crumb</p>
-      <h1>API webhook sample</h1>
-      <p class="lede">
-        Hosted proof for
-        <a href="https://github.com/CromServices/api-webhook-sample">CromServices/api-webhook-sample</a>.
-        Bid paste can link a URL that responds — not only the GitHub clone.
-      </p>
+    <main class="crom-shell doc">
+      <section style="padding: 56px 0 8px;">
+        <p class="crom-eyebrow">Crom Services · Australia · public sample</p>
+        <h1 class="crom-h1">API webhook sample</h1>
+        <p class="crom-lead">
+          Hosted demo for
+          <a href="https://github.com/CromServices/api-webhook-sample">CromServices/api-webhook-sample</a>:
+          a scoped Express webhook receiver that checks an HMAC signature. For illustration only; it holds no real data.
+        </p>
+      </section>
 
-      <div class="card">
-        <p><strong>Live demo host</strong></p>
+      <div class="crom-card" style="margin-top: 24px;">
+        <p style="margin-top: 0;"><strong>Live demo host</strong></p>
         <p>
           <a href="https://crom-api-webhook-demo.fly.dev">https://crom-api-webhook-demo.fly.dev</a><br />
           Health:
           <a href="https://crom-api-webhook-demo.fly.dev/health">https://crom-api-webhook-demo.fly.dev/health</a>
         </p>
-        <p class="warn">
-          Sample crumb only. This is a disposable public demo, not a forever-host claim for client workloads.
+        <p class="crom-note" style="margin-bottom: 0;">
+          Public sample only. This is a disposable demo, not a host for client workloads.
           Rotate the demo secret if it is ever reused beyond this sample.
         </p>
       </div>
@@ -132,7 +50,7 @@
         <code>WEBHOOK_SECRET</code>. Fail-closed HMAC is unchanged: bad or missing
         <code>X-Signature-256</code> returns 401.
       </p>
-      <div class="card secret">crom-demo-webhook-secret-v1</div>
+      <div class="crom-card secret">crom-demo-webhook-secret-v1</div>
 
       <h2>GET /health → 200</h2>
       <pre><code>curl -sS https://crom-api-webhook-demo.fly.dev/health
@@ -175,14 +93,39 @@
       <h2>What this is not</h2>
       <ul>
         <li>Not a production webhook receiver for client systems.</li>
-        <li>Not a Crom forever-host for client workloads.</li>
+        <li>Not a long-term host for client workloads.</li>
         <li>Not a place to store real client secrets.</li>
       </ul>
 
-      <footer>
-        MIT · Crom Services · Perth WA · Remote across Australia<br />
+      <p class="crom-small">
+        MIT ·
         Clone:
         <a href="https://github.com/CromServices/api-webhook-sample">github.com/CromServices/api-webhook-sample</a>
+      </p>
+      <footer class="crom-footer">
+        <p class="crom-footer__line">Crom Services · Australia · <a href="mailto:cromservices@gmail.com">cromservices@gmail.com</a></p>
+        <div class="crom-footer__credit">
+          <span class="crom-when-light">
+            <a href="https://cromservices.com.au" target="_blank" rel="noopener noreferrer"
+               aria-label="Built by Crom Services"
+               style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#4a5752;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:500;line-height:1;">
+              <img src="https://cromservices.com.au/brand/credit/crom-credit-mark-ink@1x.png"
+                   srcset="https://cromservices.com.au/brand/credit/crom-credit-mark-ink@1x.png 1x, https://cromservices.com.au/brand/credit/crom-credit-mark-ink@2x.png 2x, https://cromservices.com.au/brand/credit/crom-credit-mark-ink@3x.png 3x"
+                   width="34" height="18" alt="" style="display:block;height:18px;width:auto;">
+              <span>Built by Crom Services</span>
+            </a>
+          </span>
+          <span class="crom-when-dark">
+            <a href="https://cromservices.com.au" target="_blank" rel="noopener noreferrer"
+               aria-label="Built by Crom Services"
+               style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#cdd6d1;font-family:Inter,system-ui,sans-serif;font-size:12px;font-weight:500;line-height:1;">
+              <img src="https://cromservices.com.au/brand/credit/crom-credit-mark-white@1x.png"
+                   srcset="https://cromservices.com.au/brand/credit/crom-credit-mark-white@1x.png 1x, https://cromservices.com.au/brand/credit/crom-credit-mark-white@2x.png 2x, https://cromservices.com.au/brand/credit/crom-credit-mark-white@3x.png 3x"
+                   width="34" height="18" alt="" style="display:block;height:18px;width:auto;">
+              <span>Built by Crom Services</span>
+            </a>
+          </span>
+        </div>
       </footer>
     </main>
   </body>
