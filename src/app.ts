@@ -1,5 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { verifyHmacHeader } from "./verify.ts";
+import { landingPage } from "./landing.ts";
 
 /**
  * Published public sample secret for the disposable hosted demo.
@@ -16,9 +17,11 @@ export type AppOptions = {
 };
 
 /**
- * Build an Express app with POST /webhook that verifies X-Signature-256.
+ * Build an Express app with GET / (landing page), GET /health and
+ * POST /webhook that verifies X-Signature-256.
  */
 export function createApp(opts: AppOptions) {
+  const page = landingPage();
   const app = express();
 
   // Need raw body for HMAC; use verify callback to keep a string copy
@@ -32,6 +35,10 @@ export function createApp(opts: AppOptions) {
 
   app.get("/health", (_req: Request, res: Response) => {
     res.status(200).json({ ok: true });
+  });
+
+  app.get("/", (_req: Request, res: Response) => {
+    res.status(200).type("html").send(page);
   });
 
   app.post("/webhook", (req: Request, res: Response) => {
