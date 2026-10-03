@@ -8,7 +8,7 @@ A scoped Express webhook receiver: `POST /webhook` checks an HMAC-SHA256 signatu
 
 A public sample of how Crom Services approaches small API and webhook work. It is for illustration only, not a client system, and it holds no real data. The only secret is the published demo value `crom-demo-webhook-secret-v1`.
 
-- `GET /` serves a short landing page on the shared Crom theme.
+- `GET /` serves a short, plain-language page for business owners (no technical detail; that lives in this README), on the shared Crom theme pinned at crom-shared `v1.0.2`, with the shared header and footer.
 - `GET /health` returns `{"ok":true}`.
 - `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A match returns `200 {"received":true}`; a missing or wrong signature, or an empty secret, returns `401` (fail-closed).
 
@@ -16,11 +16,10 @@ A public sample of how Crom Services approaches small API and webhook work. It i
 |---|---|
 | `src/verify.ts` | Sign and verify helpers (timing-safe compare) |
 | `src/app.ts` | `createApp()`: `GET /`, `GET /health`, `POST /webhook` with raw-body capture |
-| `src/landing.ts` | Landing page HTML (pinned crom-shared theme and footer) |
-| `src/config.ts` | Reads `starter.config` from `package.json` (from the starter) |
+| `src/landing.ts` | Landing page HTML (crom-shared v1.0.2 theme, header and footer, pinned) |
 | `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`) |
 | `test/` | `node:test` suites (verify, HTTP, landing page) |
-| `docs/` | GitHub Pages walkthrough with copy-paste curl against the live demo |
+| `docs/` | GitHub Pages page: the same plain-language outcome copy as `GET /` |
 | `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
 
 ## What it proves
@@ -34,11 +33,49 @@ Does not prove: payment flows, retries or a production queue.
 
 - Demo: https://crom-api-webhook-demo.fly.dev
 - Health: https://crom-api-webhook-demo.fly.dev/health
-- Docs (curl and the published demo secret): https://cromservices.github.io/api-webhook-sample/
+- Owner page (plain language): https://cromservices.github.io/api-webhook-sample/
 
 ```bash
 curl -sS https://crom-api-webhook-demo.fly.dev/health
 # {"ok":true}
+```
+
+### Try it with curl
+
+The published demo secret is `crom-demo-webhook-secret-v1` (a public sample value, never a client secret). The signature is HMAC-SHA256 over the **raw** JSON body, sent in `X-Signature-256` as hex or `sha256=<hex>`.
+
+Valid signature for the fixed body `{"event":"ping"}`:
+
+```bash
+curl -sS -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' \
+  -H 'x-signature-256: sha256=2f95da3b8a47b656b7e8a980a32916dce258b449cf738632c5ffac988b6f3e9c' \
+  --data '{"event":"ping"}'
+# {"received":true}
+```
+
+Compute the same hex yourself:
+
+```bash
+printf '%s' '{"event":"ping"}' \
+  | openssl dgst -sha256 -hmac 'crom-demo-webhook-secret-v1' -hex \
+  | awk '{print $NF}'
+```
+
+Fail-closed, missing or bad signature:
+
+```bash
+curl -sS -o /dev/stderr -w '%{http_code}\n' -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' --data '{"event":"ping"}'
+# {"error":"invalid signature"}
+# 401
+
+curl -sS -o /dev/stderr -w '%{http_code}\n' -X POST https://crom-api-webhook-demo.fly.dev/webhook \
+  -H 'content-type: application/json' \
+  -H 'x-signature-256: sha256=0000000000000000000000000000000000000000000000000000000000000000' \
+  --data '{"event":"ping"}'
+# {"error":"invalid signature"}
+# 401
 ```
 
 ## Run in 3 commands

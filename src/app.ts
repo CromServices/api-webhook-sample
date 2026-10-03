@@ -1,6 +1,5 @@
 import express, { type Request, type Response } from "express";
 import { verifyHmacHeader } from "./verify.ts";
-import { loadStarterConfig, type StarterConfig } from "./config.ts";
 import { landingPage } from "./landing.ts";
 
 /**
@@ -15,8 +14,6 @@ export const DEMO_WEBHOOK_BODY = '{"event":"ping"}';
 export type AppOptions = {
   /** Shared secret for HMAC verification (published demo default when unset) */
   webhookSecret: string;
-  /** Name/description for the landing page. Defaults to package.json starter.config. */
-  config?: StarterConfig;
 };
 
 /**
@@ -24,8 +21,7 @@ export type AppOptions = {
  * POST /webhook that verifies X-Signature-256.
  */
 export function createApp(opts: AppOptions) {
-  const config = opts.config ?? loadStarterConfig();
-  const page = landingPage(config);
+  const page = landingPage();
   const app = express();
 
   // Need raw body for HMAC; use verify callback to keep a string copy

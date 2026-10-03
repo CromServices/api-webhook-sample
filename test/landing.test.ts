@@ -4,9 +4,17 @@ import type { Server } from "node:http";
 import { createApp } from "../src/app.ts";
 import { THEME_CSS_URL } from "../src/landing.ts";
 
+const PIN = "https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.2/";
+
+/** Visible text only: drop tags (and so every URL inside them). */
+function visibleText(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+}
+
 describe("GET / landing page", () => {
   let server: Server;
   let baseUrl = "";
+  let html = "";
 
   before(async () => {
     const app = createApp({ webhookSecret: "test-secret-not-for-production" });
@@ -16,6 +24,10 @@ describe("GET / landing page", () => {
     const addr = server.address();
     if (!addr || typeof addr === "string") throw new Error("expected TCP address");
     baseUrl = `http://127.0.0.1:${addr.port}`;
+    const res = await fetch(`${baseUrl}/`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type") ?? "", /text\/html/);
+    html = await res.text();
   });
 
   after(async () => {
@@ -24,36 +36,51 @@ describe("GET / landing page", () => {
     });
   });
 
-  it("returns 200 HTML with the Crom credit link", async () => {
-    const res = await fetch(`${baseUrl}/`);
-    assert.equal(res.status, 200);
-    assert.match(res.headers.get("content-type") ?? "", /text\/html/);
-    const html = await res.text();
+  it("returns 200 HTML with the Crom footer and credit link", () => {
     assert.match(html, /<footer class="crom-footer">/);
     assert.match(html, /<a href="https:\/\/cromservices\.com\.au"[^>]*aria-label="Built by Crom Services"/);
     assert.match(html, /Crom Services · Australia/);
   });
 
-  it("uses only the pinned shared theme (no inline stylesheet, no theme slot)", async () => {
-    const html = await (await fetch(`${baseUrl}/`)).text();
-    assert.equal(THEME_CSS_URL, "https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.0/theme.css");
+  it("uses only the pinned crom-shared v1.0.2 theme (no inline stylesheet, no theme slot)", () => {
+    assert.equal(THEME_CSS_URL, `${PIN}theme.css`);
     assert.ok(html.includes(`<link rel="stylesheet" href="${THEME_CSS_URL}">`));
     assert.equal((html.match(/rel="stylesheet"/g) ?? []).length, 1);
     assert.doesNotMatch(html, /<style/);
     assert.doesNotMatch(html, /CROM THEME SLOT/);
+    assert.doesNotMatch(html, /crom-shared@v1\.0\.[01]\b|crom-shared@v1\//);
   });
 
-  it("explains the sample and links /health and the docs", async () => {
-    const html = await (await fetch(`${baseUrl}/`)).text();
-    assert.match(html, /HMAC/);
-    assert.match(html, /illustration only/);
-    assert.match(html, /href="\/health"/);
-    assert.match(html, /href="https:\/\/cromservices\.github\.io\/api-webhook-sample\/"/);
+  it("has the Crom header with the pinned ink (light) and white (dark) logos", () => {
+    assert.match(html, /<header class="crom-header">/);
+    assert.ok(html.includes(`<source media="(prefers-color-scheme: dark)" srcset="${PIN}brand/logo/crom-logo-v26-white.png">`));
+    assert.ok(html.includes(`<img class="crom-logo" src="${PIN}brand/logo/crom-logo-v26-ink.png"`));
   });
 
-  it("keeps the public face clean (no city, state, postcode or price)", async () => {
-    const html = await (await fetch(`${baseUrl}/`)).text();
-    assert.doesNotMatch(html, /Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice/i);
+  it("leads with the owner outcome and ends with one plain code link", () => {
+    assert.match(html, /<h1 class="crom-h1">Connect your systems<\/h1>/);
+    assert.match(
+      html,
+      /<p class="crom-lead">Your website and business tools pass details to each other on their own, and only genuine requests get through\.<\/p>/,
+    );
+    assert.match(html, /holds no real data/);
+    const main = html.slice(html.indexOf("<main"), html.indexOf('<footer class="crom-footer">'));
+    const links = main.match(/<a [^>]*>[^<]*<\/a>/g) ?? [];
+    assert.deepEqual(links, [
+      '<a href="https://github.com/CromServices/api-webhook-sample">See the code on GitHub</a>',
+    ]);
+  });
+
+  it("keeps technical words out of the public copy (they live in the README)", () => {
+    assert.doesNotMatch(
+      visibleText(html),
+      /express|hmac|sha-?256|signature|x-signature|webhook|endpoint|\bapi\b|json|\/health|curl|header/i,
+    );
+    assert.doesNotMatch(html, /id="developers"/);
+  });
+
+  it("keeps the public face clean (no city, state, postcode, names or price)", () => {
+    assert.doesNotMatch(html, /Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
   });
 
   it("leaves /health as {ok:true}", async () => {
