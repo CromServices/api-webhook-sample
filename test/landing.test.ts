@@ -79,8 +79,28 @@ describe("GET / landing page", () => {
     assert.doesNotMatch(html, /id="developers"/);
   });
 
+  it("shows sample bookings moving from the website into the studio diary", () => {
+    assert.match(html, /id="booking-sync"/);
+    assert.match(html, /From the website to the diary/);
+    assert.match(html, /A new booking shows up in the studio diary on its own/);
+    assert.match(html, /Nothing here is a real client/);
+    assert.match(html, />Website</);
+    assert.match(html, />Studio diary</);
+    assert.match(html, /In the diary/);
+    assert.match(html, /On its way/);
+    assert.match(html, /On the website/);
+    assert.match(html, /Not there yet/);
+    assert.match(html, /Latest: Riley, Tue 2:00 pm, is on its way\./);
+    assert.equal((html.match(/data-step="/g) ?? []).length, 4);
+    assert.match(html, /data-step="2"/);
+    assert.match(html, /data-step="1"/);
+    assert.match(html, /data-step="0"/);
+    assert.match(html, /setInterval\(tick, 1800\)/);
+    assert.match(html, /prefers-reduced-motion: reduce/);
+  });
+
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {
-    assert.doesNotMatch(html, /Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
+    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
   });
 
   it("leaves /health as {ok:true}", async () => {
