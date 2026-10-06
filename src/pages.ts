@@ -1,4 +1,4 @@
-import { CROM_FOOTER, CROM_HEADER, SOURCE_URL, THEME_CSS_URL } from "./landing.ts";
+import { CROM_FOOTER, CROM_HEADER, THEME_CSS_URL } from "./landing.ts";
 import { historyLines, present, triageFrom, type TriageView, type View } from "./present.ts";
 import { STORY } from "./story.ts";
 import type { Picture, Snapshot } from "./store.ts";
@@ -17,20 +17,19 @@ function nav(): string {
     .join("")}</p>`;
 }
 
-function shell(opts: { title: string; body: string }): string {
+function shell(body: string): string {
   return `<!doctype html>
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(opts.title)}</title>
+<title>${esc(STORY.pageTitle)}</title>
 <link rel="stylesheet" href="${THEME_CSS_URL}">
 </head>
 <body>
 ${CROM_HEADER}
 <main class="crom-shell">
-${opts.body}
-<p style="margin-top:8px;"><a href="${SOURCE_URL}">${esc(STORY.code)}</a></p>
+${body}
 ${CROM_FOOTER}
 </main>
 </body>
@@ -70,9 +69,7 @@ function column(title: string, view: View, withHeadline = true): string {
 
 export function homePage(picture: Picture): string {
   const view = present(picture);
-  return shell({
-    title: `${STORY.h1} · Crom Services`,
-    body: `<section style="padding:0;">
+  return shell(`<section style="padding:0;">
     <p class="crom-eyebrow">Crom Services · Australia</p>
     <h1 class="crom-h1">${esc(STORY.h1)}</h1>
     <p class="crom-lead" style="margin-top:8px;">${esc(STORY.lead)}</p>
@@ -84,8 +81,7 @@ export function homePage(picture: Picture): string {
       ${column(STORY.shop, { ...view, products: [], extras: [] }, false)}
       ${column(STORY.stock, view, false)}
     </div>
-  </section>`,
-  });
+  </section>`);
 }
 
 export function shopPage(picture: Picture): string {
@@ -93,9 +89,7 @@ export function shopPage(picture: Picture): string {
   const options = picture.products
     .map((row) => `<option value="${esc(row.name)}">${esc(row.name)}</option>`)
     .join("");
-  return shell({
-    title: `${STORY.shop} · Crom Services`,
-    body: `<section style="padding:16px 0 0;">
+  return shell(`<section style="padding:16px 0 0;">
     <h1 class="crom-h2">${esc(STORY.shop)}</h1>
     ${nav()}
     <form method="post" action="/shop/orders" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:16px;">
@@ -111,23 +105,19 @@ export function shopPage(picture: Picture): string {
   <section class="crom-card" style="margin-top:24px;">
     <p style="font-weight:600;margin:0;">${esc(view.headline)}</p>
     ${rows(view)}
-  </section>`,
-  });
+  </section>`);
 }
 
 export function stockPage(picture: Picture): string {
   const view = present(picture);
-  return shell({
-    title: `${STORY.stock} · Crom Services`,
-    body: `<section style="padding:16px 0 0;">
+  return shell(`<section style="padding:16px 0 0;">
     <h1 class="crom-h2">${esc(STORY.stock)}</h1>
     ${nav()}
   </section>
   <section class="crom-card" style="margin-top:24px;">
     <p style="font-weight:600;margin:0;">${esc(view.headline)}</p>
     ${rows({ ...view, extras: view.extras })}
-  </section>`,
-  });
+  </section>`);
 }
 
 export function historyPage(picture: Picture): string {
@@ -136,16 +126,13 @@ export function historyPage(picture: Picture): string {
     lines.length === 0
       ? `<p class="crom-note" style="margin:12px 0 0;">${esc(STORY.historyEmpty)}</p>`
       : lines.map((line) => `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid var(--border);">${esc(line)}</p>`).join("");
-  return shell({
-    title: `${STORY.history} · Crom Services`,
-    body: `<section style="padding:16px 0 0;">
+  return shell(`<section style="padding:16px 0 0;">
     <h1 class="crom-h2">${esc(STORY.history)}</h1>
     ${nav()}
   </section>
   <section class="crom-card" style="margin-top:24px;">
     ${body}
-  </section>`,
-  });
+  </section>`);
 }
 
 function shot(snapshot: Snapshot | null): View {
@@ -183,7 +170,7 @@ function triageBody(view: TriageView): string {
   const later = view.later
     ? triageBlock(STORY.laterTitle, `<p style="margin:8px 0 0;">${esc(view.later)}</p>`)
     : "";
-  return `${triageBlock(STORY.triageTitle, `<p style="margin:8px 0 0;font-weight:600;">${esc(view.checked)}</p>`)}
+  return `<p style="margin:0;font-weight:600;">${esc(view.checked)}</p>
     ${triageBlock(STORY.foundTitle, found)}
     ${fixed}
     ${later}`;
@@ -195,32 +182,22 @@ export function demoPage(
   view: "side" | "triage" = "side",
 ): string {
   if (view === "triage") {
-    return shell({
-      title: `${STORY.triageTitle} · Crom Services`,
-      body: `<section style="padding:16px 0 0;">
+    return shell(`<section style="padding:16px 0 0;">
     <p class="crom-eyebrow">Crom Services · Australia</p>
     <h1 class="crom-h2">${esc(STORY.triageTitle)}</h1>
-    <p class="crom-note" style="margin:8px 0 0;">${esc(STORY.demo)}</p>
     ${nav()}
-    <p style="margin:8px 0 0;"><a href="/demo">${esc(STORY.sideBySide)}</a></p>
   </section>
   <section class="crom-card" style="margin-top:12px;padding:16px;">
     ${triageBody(triageFrom(before))}
-  </section>`,
-    });
+  </section>`);
   }
-  return shell({
-    title: `${STORY.sideBySide} · Crom Services`,
-    body: `<section style="padding:16px 0 0;">
+  return shell(`<section style="padding:16px 0 0;">
     <p class="crom-eyebrow">Crom Services · Australia</p>
     <h1 class="crom-h2">${esc(STORY.sideBySide)}</h1>
-    <p class="crom-note" style="margin:8px 0 0;">${esc(STORY.demo)}</p>
     ${nav()}
-    <p style="margin:8px 0 0;"><a href="/demo?view=triage">${esc(STORY.triageTitle)}</a></p>
   </section>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px;">
     ${column(STORY.before, shot(before))}
     ${column(STORY.after, shot(after))}
-  </div>`,
-  });
+  </div>`);
 }

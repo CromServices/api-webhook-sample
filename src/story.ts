@@ -3,7 +3,7 @@
  * Order numbers, counts and times come from stored runs, not from this file.
  */
 export const STORY = {
-  demo: "Demo shop, not a real business",
+  pageTitle: "Shop-to-stock order sync: sample",
   h1: "Connect your systems",
   lead: "Place an order once. It shows in the online shop and in stock.",
   before: "Before",
@@ -38,7 +38,6 @@ export const STORY = {
   neverArrived: "Never arrived",
   duplicateStopped: "Duplicate stopped",
   rejected: "Rejected, not from your shop",
-  code: "See the code on GitHub",
   products: [
     { name: "Flat white", onHand: 12 },
     { name: "Long black", onHand: 12 },
@@ -50,6 +49,7 @@ export const STORY = {
     { href: "/stock", label: "Stock" },
     { href: "/history", label: "What happened" },
     { href: "/demo", label: "Before and after" },
+    { href: "/demo?view=triage", label: "What we checked" },
   ],
 } as const;
 

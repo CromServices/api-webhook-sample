@@ -9,6 +9,7 @@ export const SOURCE_URL = "https://github.com/CromServices/api-webhook-sample";
  * of header.js). Only change: the logo folder is the pinned v1.0.2 copy
  * (the header.js data-logo-base / CROM_LOGO_BASE override), so it can't drift.
  * Ink logo on light, white logo on dark, swapped by <picture> + prefers-color-scheme.
+ * The example-project pill is left off. The only "sample" marker is the page title.
  */
 export const CROM_HEADER = `
 <header class="crom-header">
@@ -19,7 +20,6 @@ export const CROM_HEADER = `
         <img class="crom-logo" src="https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.2/brand/logo/crom-logo-v26-ink.png" width="526" height="481" alt="Crom Services" />
       </picture>
     </a>
-    <span class="crom-tag">Sample · example project</span>
   </div>
 </header>
 `;

@@ -12,7 +12,7 @@ The public pages are a small shop and a stock count. Placing an order sends it, 
 
 - `GET /` shows the online shop and stock from the stored file.
 - `GET /shop` places an order. `GET /stock` is the stock count. `GET /history` is what happened, in plain language.
-- `GET /demo` is marked as a demo. It reads the saved before-run and after-run from the same file. `GET /demo?view=triage` is the same before-run counted up: what was checked, what was found, what was fixed first, and what was left for later.
+- `GET /demo` reads the saved before-run and after-run from the same file. `GET /demo?view=triage` is that before-run counted up: what was checked, what was found, what was fixed first, and what was left for later. The page title is the only place that says sample.
 - `GET /health` returns `{"ok":true}`.
 - `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A non-order body such as `{"event":"ping"}` still returns `200 {"received":true}` when the signature matches, and `401 {"error":"invalid signature"}` when it does not. An order-shaped body is stocked. The check runs before anything is stored.
 

@@ -59,20 +59,20 @@ describe("GET / landing page", () => {
     assert.match(html, /<header class="crom-header">/);
     assert.ok(html.includes(`<source media="(prefers-color-scheme: dark)" srcset="${PIN}brand/logo/crom-logo-v26-white.png">`));
     assert.ok(html.includes(`<img class="crom-logo" src="${PIN}brand/logo/crom-logo-v26-ink.png"`));
-    assert.match(html, /Sample · example project/);
+    assert.doesNotMatch(html, /Sample · example project/);
   });
 
-  it("leads with the owner outcome and one plain code link after the shop links", () => {
+  it("leads with the owner outcome and lists each view once", () => {
+    assert.match(html, /<title>Shop-to-stock order sync: sample<\/title>/);
     assert.match(html, /<h1 class="crom-h1">Connect your systems<\/h1>/);
     assert.match(html, new RegExp(`<p class="crom-lead"[^>]*>${STORY.lead}</p>`));
-    assert.doesNotMatch(html, /holds no real data/);
-    assert.equal((html.match(new RegExp(STORY.demo, "g")) ?? []).length, 0);
+    assert.doesNotMatch(html, /holds no real data|Demo shop, not a real business|See the code on GitHub/);
     const main = html.slice(html.indexOf("<main"), html.indexOf('<footer class="crom-footer">'));
     const links = main.match(/<a [^>]*>[^<]*<\/a>/g) ?? [];
-    assert.deepEqual(links, [
-      ...STORY.nav.map((item) => `<a href="${item.href}">${item.label}</a>`),
-      '<a href="https://github.com/CromServices/api-webhook-sample">See the code on GitHub</a>',
-    ]);
+    assert.deepEqual(
+      links,
+      STORY.nav.map((item) => `<a href="${item.href}">${item.label}</a>`),
+    );
   });
 
   it("shows an empty shop and stock from the stored picture", () => {
@@ -100,9 +100,12 @@ describe("GET / landing page", () => {
       assert.doesNotMatch(page, /<script/, path);
       assert.doesNotMatch(visibleText(page), JARGON, path);
       assert.doesNotMatch(page, /\d{4}-\d{2}-\d{2}T|\/admin|hmac|signature|payload|bearer/i, path);
+      assert.match(page, /<title>Shop-to-stock order sync: sample<\/title>/, path);
+      assert.doesNotMatch(page, /Demo shop, not a real business|See the code on GitHub|Sample · example project/, path);
     }
     const demo = await (await fetch(`${baseUrl}/demo`)).text();
-    assert.equal((demo.match(new RegExp(STORY.demo, "g")) ?? []).length, 1);
+    assert.equal((demo.match(/>Before and after</g) ?? []).length, 2);
+    assert.equal((demo.match(/>What we checked</g) ?? []).length, 1);
     assert.match(demo, />Before</);
     assert.match(demo, />After</);
     assert.match(demo, /No orders yet\./);
@@ -111,7 +114,7 @@ describe("GET / landing page", () => {
     const triage = await (await fetch(`${baseUrl}/demo?view=triage`)).text();
     assert.match(triage, /Orders made: 0\. Orders that arrived in stock: 0\./);
     assert.match(triage, /Nothing out of place\./);
-    assert.equal((triage.match(/Demo shop, not a real business/g) ?? []).length, 1);
+    assert.equal((triage.match(/>Before and after</g) ?? []).length, 1);
     assert.doesNotMatch(triage, /1 never arrived|1 arrived twice|not from your shop|weren't copied across/);
   });
 

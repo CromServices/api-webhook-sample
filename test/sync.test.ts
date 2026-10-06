@@ -370,7 +370,9 @@ describe("saved before and after", () => {
     assert.match(demo, /Duplicate stopped/);
     assert.match(demo, /Rejected, not from your shop/);
     assert.match(demo, /Didn't arrive, sent again, arrived/);
-    assert.equal((demo.match(/Demo shop, not a real business/g) ?? []).length, 1);
+    assert.doesNotMatch(demo, /Demo shop, not a real business|See the code on GitHub|Sample · example project/);
+    assert.equal((demo.match(/>What we checked</g) ?? []).length, 1);
+    assert.match(demo, /<title>Shop-to-stock order sync: sample<\/title>/);
     const visible = demo.replace(/<[^>]*>/g, " ");
     assert.doesNotMatch(visible, /webhook|hmac|signature|payload|\b401\b|\b200\b/i);
     assert.doesNotMatch(demo, /\d{4}-\d{2}-\d{2}T/);
@@ -398,7 +400,8 @@ describe("saved before and after", () => {
     assert.match(triage, /Duplicates next, because they make the stock count wrong/);
     assert.match(triage, /Then a turned-away order is noted, so it is not lost/);
     assert.match(triage, /Orders from before the switch-on weren't copied across/);
-    assert.equal((triage.match(/Demo shop, not a real business/g) ?? []).length, 1);
+    assert.doesNotMatch(triage, /Demo shop, not a real business|See the code on GitHub|Sample · example project/);
+    assert.equal((triage.match(/>Before and after</g) ?? []).length, 1);
     assert.doesNotMatch(triage, /\d{4}-\d{2}-\d{2}T/);
   });
 });
