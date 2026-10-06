@@ -25,7 +25,9 @@ jobs:
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - name: Deploy
         if: ${{ env.FLY_API_TOKEN != '' }}
-        run: flyctl deploy --remote-only
+        run: |
+          flyctl deploy --remote-only
+          flyctl scale count 1 --yes
       - name: Skip when FLY_API_TOKEN is unset
         if: ${{ env.FLY_API_TOKEN == '' }}
         run: echo "FLY_API_TOKEN secret is not set; skipping Fly deploy."
