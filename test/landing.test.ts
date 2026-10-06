@@ -91,7 +91,7 @@ describe("GET / landing page", () => {
   });
 
   it("serves the shop, stock, history and side-by-side pages in plain language", async () => {
-    for (const path of ["/shop", "/stock", "/history", "/demo"]) {
+    for (const path of ["/shop", "/stock", "/history", "/demo", "/demo?view=triage"]) {
       const res = await fetch(`${baseUrl}${path}`);
       assert.equal(res.status, 200, path);
       const page = await res.text();
@@ -108,6 +108,11 @@ describe("GET / landing page", () => {
     assert.match(demo, /No orders yet\./);
     const history = await (await fetch(`${baseUrl}/history`)).text();
     assert.match(history, /Nothing has happened yet\./);
+    const triage = await (await fetch(`${baseUrl}/demo?view=triage`)).text();
+    assert.match(triage, /Orders made: 0\. Orders that arrived in stock: 0\./);
+    assert.match(triage, /Nothing out of place\./);
+    assert.equal((triage.match(/Demo shop, not a real business/g) ?? []).length, 1);
+    assert.doesNotMatch(triage, /1 never arrived|1 arrived twice|not from your shop|weren't copied across/);
   });
 
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {

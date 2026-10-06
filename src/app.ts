@@ -124,9 +124,10 @@ export function createApp(opts: AppOptions): DemoApp {
     res.status(200).type("html").send(historyPage(picture()));
   });
 
-  app.get("/demo", (_req: Request, res: Response) => {
+  app.get("/demo", (req: Request, res: Response) => {
     const state = store.snapshot();
-    res.status(200).type("html").send(demoPage(state.snapshots.before, state.snapshots.after));
+    const view = req.query.view === "triage" ? "triage" : "side";
+    res.status(200).type("html").send(demoPage(state.snapshots.before, state.snapshots.after, view));
   });
 
   app.post("/shop/orders", (req: Request, res: Response) => {

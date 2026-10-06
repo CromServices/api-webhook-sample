@@ -13,6 +13,20 @@ export const STORY = {
   history: "What happened",
   both: "Shop and stock",
   sideBySide: "Before and after",
+  triageTitle: "What we checked",
+  foundTitle: "What we found",
+  fixedTitle: "What we fixed first",
+  laterTitle: "Flagged for later",
+  nothingFound: "Nothing out of place.",
+  fixedMissing: "Missing orders first, because a missing order is a lost sale.",
+  fixedDuplicates: "Duplicates next, because they make the stock count wrong.",
+  fixedTurnedAway: "Then a turned-away order is noted, so it is not lost.",
+  /**
+   * Earlier orders are not loaded into the shop. The triage page says so
+   * because that is true, not because a row was typed in.
+   */
+  earlierOrdersCopied: false,
+  laterNotCopied: "Orders from before the switch-on weren't copied across.",
   none: "No orders yet.",
   historyEmpty: "Nothing has happened yet.",
   place: "Place order",
@@ -41,6 +55,10 @@ export const STORY = {
 
 export function madeArrived(made: number, arrived: number): string {
   return `Made ${made}. Arrived ${arrived}.`;
+}
+
+export function checkedLine(made: number, arrived: number): string {
+  return `Orders made: ${made}. Orders that arrived in stock: ${arrived}.`;
 }
 
 export function orderLine(id: string, qty: number, product: string): string {

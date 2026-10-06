@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createApp, type DemoApp } from "../src/app.ts";
 import { orderPayload } from "../src/deliver.ts";
-import { madeArrived } from "../src/story.ts";
+import { madeArrived, orderLine } from "../src/story.ts";
 import type { State } from "../src/store.ts";
 import { signBody } from "../src/verify.ts";
 
@@ -375,5 +375,30 @@ describe("saved before and after", () => {
     assert.doesNotMatch(visible, /webhook|hmac|signature|payload|\b401\b|\b200\b/i);
     assert.doesNotMatch(demo, /\d{4}-\d{2}-\d{2}T/);
     assert.match(demo, new RegExp(madeArrived(3, 3)));
+
+    const triage = await (await fetch(`${base}/demo?view=triage`)).text();
+    const beforeShot = state.snapshots.before;
+    assert.ok(beforeShot);
+    const never = beforeShot.shopOrders.filter(
+      (order) => !beforeShot.stockOrders.some((row) => row.id === order.id),
+    );
+    const twice = beforeShot.shopOrders.filter(
+      (order) => beforeShot.stockOrders.filter((row) => row.id === order.id).length >= 2,
+    );
+    assert.equal(never.length, 1);
+    assert.equal(twice.length, 1);
+    assert.match(triage, /Orders made: 3\. Orders that arrived in stock: 2\./);
+    assert.match(triage, /1 never arrived/);
+    assert.match(triage, /1 arrived twice/);
+    assert.doesNotMatch(triage, /not from your shop/);
+    for (const order of [...never, ...twice]) {
+      assert.match(triage, new RegExp(orderLine(order.id, order.qty, order.product).replace(/[.]/g, "\\.")));
+    }
+    assert.match(triage, /Missing orders first, because a missing order is a lost sale/);
+    assert.match(triage, /Duplicates next, because they make the stock count wrong/);
+    assert.match(triage, /Then a turned-away order is noted, so it is not lost/);
+    assert.match(triage, /Orders from before the switch-on weren't copied across/);
+    assert.equal((triage.match(/Demo shop, not a real business/g) ?? []).length, 1);
+    assert.doesNotMatch(triage, /\d{4}-\d{2}-\d{2}T/);
   });
 });

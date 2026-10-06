@@ -1,5 +1,5 @@
 import { CROM_FOOTER, CROM_HEADER, SOURCE_URL, THEME_CSS_URL } from "./landing.ts";
-import { historyLines, present, type View } from "./present.ts";
+import { historyLines, present, triageFrom, type TriageView, type View } from "./present.ts";
 import { STORY } from "./story.ts";
 import type { Picture, Snapshot } from "./store.ts";
 
@@ -152,7 +152,60 @@ function shot(snapshot: Snapshot | null): View {
   return present(snapshot);
 }
 
-export function demoPage(before: Snapshot | null, after: Snapshot | null): string {
+function triageBlock(title: string, body: string): string {
+  return `<section style="margin-top:18px;"><h2 class="crom-h3">${esc(title)}</h2>${body}</section>`;
+}
+
+function triageBody(view: TriageView): string {
+  const found =
+    view.found.length === 0
+      ? `<p style="margin:8px 0 0;">${esc(STORY.nothingFound)}</p>`
+      : view.found
+          .map((item) => {
+            const orders = item.orders
+              .map((line) => `<p class="crom-note" style="margin:4px 0 0;">${esc(line)}</p>`)
+              .join("");
+            return `<p style="margin:10px 0 0;font-weight:600;">${esc(item.summary)}</p>${orders}`;
+          })
+          .join("");
+  const fixed =
+    view.fixed.length === 0
+      ? ""
+      : triageBlock(
+          STORY.fixedTitle,
+          view.fixed
+            .map((line, index) => `<p style="margin:8px 0 0;">${index + 1}. ${esc(line)}</p>`)
+            .join(""),
+        );
+  const later = view.later
+    ? triageBlock(STORY.laterTitle, `<p style="margin:8px 0 0;">${esc(view.later)}</p>`)
+    : "";
+  return `${triageBlock(STORY.triageTitle, `<p style="margin:8px 0 0;font-weight:600;">${esc(view.checked)}</p>`)}
+    ${triageBlock(STORY.foundTitle, found)}
+    ${fixed}
+    ${later}`;
+}
+
+export function demoPage(
+  before: Snapshot | null,
+  after: Snapshot | null,
+  view: "side" | "triage" = "side",
+): string {
+  if (view === "triage") {
+    return shell({
+      title: `${STORY.triageTitle} · Crom Services`,
+      body: `<section style="padding:16px 0 0;">
+    <p class="crom-eyebrow">Crom Services · Australia</p>
+    <h1 class="crom-h2">${esc(STORY.triageTitle)}</h1>
+    <p class="crom-note" style="margin:12px 0 0;">${esc(STORY.demo)}</p>
+    ${nav()}
+    <p style="margin:12px 0 0;"><a href="/demo">${esc(STORY.sideBySide)}</a></p>
+  </section>
+  <section class="crom-card" style="margin-top:20px;">
+    ${triageBody(triageFrom(before))}
+  </section>`,
+    });
+  }
   return shell({
     title: `${STORY.sideBySide} · Crom Services`,
     body: `<section style="padding:16px 0 0;">
@@ -160,6 +213,7 @@ export function demoPage(before: Snapshot | null, after: Snapshot | null): strin
     <h1 class="crom-h2">${esc(STORY.sideBySide)}</h1>
     <p class="crom-note" style="margin:12px 0 0;">${esc(STORY.demo)}</p>
     ${nav()}
+    <p style="margin:12px 0 0;"><a href="/demo?view=triage">${esc(STORY.triageTitle)}</a></p>
   </section>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:24px;">
     ${column(STORY.before, shot(before))}

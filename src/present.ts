@@ -1,4 +1,4 @@
-import { madeArrived, onHandLine, orderLine, STORY } from "./story.ts";
+import { checkedLine, madeArrived, onHandLine, orderLine, STORY } from "./story.ts";
 import type { Picture, ShopOrder } from "./store.ts";
 
 export type ViewRow = {
@@ -73,6 +73,71 @@ export function present(picture: Picture): View {
     orders,
     products,
     extras: extras.map((row) => ({ text: row.text })),
+  };
+}
+
+export type TriageFinding = {
+  summary: string;
+  orders: string[];
+};
+
+export type TriageView = {
+  checked: string;
+  found: TriageFinding[];
+  fixed: string[];
+  later: string | null;
+};
+
+function stockCount(picture: Picture, id: string): number {
+  return picture.stockOrders.filter((row) => row.id === id).length;
+}
+
+/** Plain triage of one stored run. Counts and order lines come from that run. */
+export function triageFrom(picture: Picture | null): TriageView {
+  if (!picture) {
+    return { checked: checkedLine(0, 0), found: [], fixed: [], later: null };
+  }
+  const made = picture.shopOrders.length;
+  const arrived = new Set(picture.stockOrders.map((row) => row.id)).size;
+  const never = picture.shopOrders.filter((order) => stockCount(picture, order.id) === 0);
+  const twice = picture.shopOrders.filter((order) => stockCount(picture, order.id) >= 2);
+  const turnedAwayIds = [
+    ...new Set(
+      picture.attempts.filter((row) => row.outcome === "rejected").map((row) => row.orderId),
+    ),
+  ];
+  const found: TriageFinding[] = [];
+  if (never.length > 0) {
+    found.push({
+      summary: `${never.length} never arrived`,
+      orders: never.map((order) => orderLine(order.id, order.qty, order.product)),
+    });
+  }
+  if (twice.length > 0) {
+    found.push({
+      summary: `${twice.length} arrived twice`,
+      orders: twice.map((order) => orderLine(order.id, order.qty, order.product)),
+    });
+  }
+  if (turnedAwayIds.length > 0) {
+    found.push({
+      summary: `${turnedAwayIds.length} not from your shop`,
+      orders: turnedAwayIds.map((id) => {
+        const attempt = picture.attempts.find((row) => row.orderId === id && row.outcome === "rejected");
+        return orderLine(id, attempt?.qty ?? 1, attempt?.product ?? "");
+      }),
+    });
+  }
+  const fixed: string[] = [];
+  if (never.length > 0) fixed.push(STORY.fixedMissing);
+  if (twice.length > 0) fixed.push(STORY.fixedDuplicates);
+  if (never.length > 0 || turnedAwayIds.length > 0) fixed.push(STORY.fixedTurnedAway);
+  const hasWork = made > 0 || arrived > 0 || picture.attempts.length > 0;
+  return {
+    checked: checkedLine(made, arrived),
+    found,
+    fixed,
+    later: hasWork && !STORY.earlierOrdersCopied ? STORY.laterNotCopied : null,
   };
 }
 
