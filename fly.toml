@@ -13,6 +13,10 @@ primary_region = "syd"
   # sample value — never a client secret. Override with
   # `fly secrets set WEBHOOK_SECRET=...` if the documented value changes.
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
+  # One machine, one file on that machine's disk. Auto-stop keeps the disk.
+  # A new deploy starts empty. Do not attach a volume (deploy fails if it is
+  # missing). Set DEMO_ADMIN_TOKEN with `fly secrets set` — never commit it.
+  DATA_PATH = "/app/data/demo-shop.json"
 
 [http_service]
   internal_port = 3000

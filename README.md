@@ -6,28 +6,38 @@ A scoped Express webhook receiver: `POST /webhook` checks an HMAC-SHA256 signatu
 
 ## What it is
 
-A public sample of how Crom Services approaches small API and webhook work. It is for illustration only, not a client system, and it holds no real data. The only secret is the published demo value `crom-demo-webhook-secret-v1`.
+A public sample of how Crom Services approaches small API and webhook work. It is for illustration only, not a client system. The only published secret is the demo value `crom-demo-webhook-secret-v1`. A second value, `DEMO_ADMIN_TOKEN`, unlocks private controls and is never shown on the public pages. Leave it unset and those controls stay closed.
 
-- `GET /` serves a short, plain-language page for business owners (no technical detail; that lives in this README), on the shared Crom theme pinned at crom-shared `v1.0.2`, with the shared header and footer.
+The public pages are a small shop and a stock count. Placing an order sends it, over HTTP, through the same signed `POST /webhook` check. The pages stay in plain language (order numbers, human times, on-hand counts). Labels live in `src/story.ts`.
+
+- `GET /` shows the online shop and stock from the stored file.
+- `GET /shop` places an order. `GET /stock` is the stock count. `GET /history` is what happened, in plain language.
+- `GET /demo` reads the saved before-run and after-run from the same file. `GET /demo?view=triage` is that before-run counted up: what was checked, what was found, what was fixed first, and what was left for later. The page title is the only place that says sample.
 - `GET /health` returns `{"ok":true}`.
-- `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A match returns `200 {"received":true}`; a missing or wrong signature, or an empty secret, returns `401` (fail-closed).
+- `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A non-order body such as `{"event":"ping"}` still returns `200 {"received":true}` when the signature matches, and `401 {"error":"invalid signature"}` when it does not. An order-shaped body is stocked. The check runs before anything is stored.
 
 | Path | Purpose |
 |---|---|
 | `src/verify.ts` | Sign and verify helpers (timing-safe compare) |
-| `src/app.ts` | `createApp()`: `GET /`, `GET /health`, `POST /webhook` with raw-body capture |
-| `src/landing.ts` | Landing page HTML (crom-shared v1.0.2 theme, header and footer, pinned) |
-| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`) |
-| `test/` | `node:test` suites (verify, HTTP, landing page) |
-| `docs/` | GitHub Pages page: the same plain-language outcome copy as `GET /` |
+| `src/app.ts` | `createApp()`: public pages, `GET /health`, `POST /webhook`, private controls |
+| `src/store.ts` | Shop orders, stock rows, attempt history, and the two saved runs |
+| `src/deliver.ts` | Sends an order to `/webhook` and tries again until it lands |
+| `src/present.ts` | Turns stored rows into the words on the pages |
+| `src/pages.ts` | Page HTML |
+| `src/story.ts` | Customer-facing labels |
+| `src/landing.ts` | Shared crom-shared v1.0.2 header and footer, pinned |
+| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
+| `test/` | `node:test` suites |
+| `docs/` | GitHub Pages page (the earlier static copy; the live demo is the Fly app) |
 | `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
 
 ## What it proves
 
 - One HMAC-verified webhook endpoint, done the careful way: signature over the raw body, timing-safe compare, fail-closed on anything missing.
+- A real shop-to-stock send on that same check: a slow first reply can land twice on the old path, a failed check can disappear on the old path, and the fixed path keeps one stock row, tries again while stock is down, and notes a failed check.
 - The same toolchain as every Crom Services TypeScript API: strict TypeScript, `node:test`, a multi-stage `Dockerfile` and `fly.toml`.
 
-Does not prove: payment flows, retries or a production queue.
+Does not prove: payment flows or a production queue.
 
 ## Live link
 
@@ -88,7 +98,7 @@ npm test
 npm run dev        # http://localhost:3000/
 ```
 
-`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value.
+`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value. Orders and stock are stored in `DATA_PATH` (default `data/demo-shop.json`). On Fly that file lives on one machine's disk (`flyctl scale count 1`); auto-stop keeps the disk, and a new deploy starts empty. Do not attach a volume. Set `DEMO_ADMIN_TOKEN` in the environment (or `fly secrets set`) to use the private controls; they answer 401 when it is missing.
 
 Deploy: a push to `main` runs `.github/workflows/fly.yml`, which deploys to Fly when the `FLY_API_TOKEN` repository secret is set (and skips cleanly when it is not). `docs/` is published by `.github/workflows/pages.yml`.
 
