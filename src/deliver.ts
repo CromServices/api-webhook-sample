@@ -8,6 +8,8 @@ export type DeliveryDeps = {
   clientTimeoutMs: number;
   store: Store;
   inflight: Set<string>;
+  /** Shop orders this check has already sent again. Cleared with the shop. */
+  recovered: Set<string>;
 };
 
 export function orderPayload(order: { id: string; product: string; qty: number }): string {
@@ -30,6 +32,23 @@ function delayBefore(attempt: number, delaysMs: number[]): number {
   if (attempt === 0) return 0;
   const index = Math.min(attempt - 1, Math.max(delaysMs.length - 1, 0));
   return delaysMs[index] ?? 1000;
+}
+
+/**
+ * Fixed mode only. Compares orders the shop made with rows stock has, and
+ * sends each missing one again as a normal shop delivery. Once per order.
+ * Old mode does nothing. A delivery the shop never made is not in the shop list.
+ */
+export function sendMissing(deps: DeliveryDeps): void {
+  if (deps.store.mode() !== "fixed") return;
+  const arrived = new Set(deps.store.snapshot().stockOrders.map((row) => row.id));
+  for (const order of deps.store.snapshot().shopOrders) {
+    if (arrived.has(order.id)) continue;
+    if (deps.inflight.has(order.id)) continue;
+    if (deps.recovered.has(order.id)) continue;
+    deps.recovered.add(order.id);
+    startDelivery(order, deps);
+  }
 }
 
 export function startDelivery(

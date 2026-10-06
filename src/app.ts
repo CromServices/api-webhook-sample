@@ -3,7 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import express, { type Express, type Request, type Response } from "express";
-import { orderPayload, startDelivery, type DeliveryDeps } from "./deliver.ts";
+import { orderPayload, sendMissing, startDelivery, type DeliveryDeps } from "./deliver.ts";
 import { demoPage, historyPage, homePage, shopPage, stockPage } from "./pages.ts";
 import { openStore, type Picture } from "./store.ts";
 import { verifyHmacHeader } from "./verify.ts";
@@ -75,6 +75,7 @@ export function createApp(opts: AppOptions): DemoApp {
     opts.dataPath ?? path.join(mkdtempSync(path.join(tmpdir(), "crom-shop-")), "demo-shop.json");
   const store = openStore(dataPath);
   const inflight = new Set<string>();
+  const recovered = new Set<string>();
   const deps: DeliveryDeps = {
     secret: opts.webhookSecret,
     webhookUrl: opts.webhookUrl ?? (() => "http://127.0.0.1:3000/webhook"),
@@ -82,7 +83,10 @@ export function createApp(opts: AppOptions): DemoApp {
     clientTimeoutMs: opts.clientTimeoutMs ?? 400,
     store,
     inflight,
+    recovered,
   };
+  const missingTimer = setInterval(() => sendMissing(deps), 300);
+  missingTimer.unref();
 
   const app = express();
   app.use(
@@ -257,6 +261,7 @@ export function createApp(opts: AppOptions): DemoApp {
         },
         body: raw,
       });
+      sendMissing(deps);
       res.status(200).json({ ok: true, id, status: response.status });
     } catch {
       res.status(502).json({ error: "not allowed" });
@@ -291,6 +296,7 @@ export function createApp(opts: AppOptions): DemoApp {
     if (!requireAdmin(req, res)) return;
     const mode = req.body?.mode === "old" ? "old" : "fixed";
     inflight.clear();
+    recovered.clear();
     store.reset(mode);
     res.status(200).json({ ok: true });
   });
@@ -298,6 +304,7 @@ export function createApp(opts: AppOptions): DemoApp {
   return Object.assign(app, {
     resumePending() {
       for (const order of store.pending()) startDelivery(order, deps);
+      sendMissing(deps);
     },
   });
 }

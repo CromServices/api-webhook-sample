@@ -28,10 +28,10 @@ export function humanTime(iso: string): string {
 function labelFor(order: ShopOrder, picture: Picture): string {
   const stockCount = picture.stockOrders.filter((row) => row.id === order.id).length;
   const mine = picture.attempts.filter((row) => row.orderId === order.id);
-  const down = mine.some((row) => row.outcome === "down");
+  const missed = mine.some((row) => row.outcome === "down" || row.outcome === "rejected");
   const ok = mine.some((row) => row.outcome === "ok");
   if (stockCount >= 2) return STORY.arrivedTwice;
-  if (stockCount === 1 && down && ok) return STORY.sentAgain;
+  if (stockCount === 1 && missed && ok) return STORY.sentAgain;
   if (stockCount === 1) return STORY.arrived;
   if (mine.some((row) => row.outcome === "rejected")) return STORY.rejected;
   return STORY.neverArrived;
@@ -61,6 +61,11 @@ export function present(picture: Picture): View {
   const extras: { at: string; text: string }[] = [];
   for (const attempt of picture.attempts) {
     if (attempt.outcome !== "duplicate" && attempt.outcome !== "rejected") continue;
+    const arrivedLater =
+      attempt.outcome === "rejected" &&
+      picture.stockOrders.some((row) => row.id === attempt.orderId) &&
+      picture.attempts.some((row) => row.orderId === attempt.orderId && row.outcome === "ok");
+    if (arrivedLater) continue;
     const label = attempt.outcome === "duplicate" ? STORY.duplicateStopped : STORY.rejected;
     extras.push({
       at: attempt.at,
@@ -154,9 +159,9 @@ export function historyLines(picture: Picture): string[] {
     const first = sorted[0];
     if (!first) continue;
     const text = orderLine(id, first.qty, first.product);
-    const down = sorted.some((row) => row.outcome === "down");
+    const missed = sorted.some((row) => row.outcome === "down" || row.outcome === "rejected");
     const ok = sorted.find((row) => row.outcome === "ok");
-    if (ok && down) {
+    if (ok && missed) {
       lines.push({ at: ok.at, text: `${text}. ${STORY.sentAgain}.` });
     } else if (ok) {
       lines.push({ at: ok.at, text: `${text}. ${STORY.arrived}.` });
@@ -168,7 +173,7 @@ export function historyLines(picture: Picture): string[] {
           text: `${text}. ${STORY.duplicateStopped}.`,
         });
       }
-      if (attempt.outcome === "rejected") {
+      if (attempt.outcome === "rejected" && !ok) {
         lines.push({
           at: attempt.at,
           text: `${text}. ${STORY.rejected}.`,

@@ -257,6 +257,102 @@ describe("old behaviour", () => {
     assert.equal(state.stockOrders.some((row) => row.id === body.id), false);
     assert.equal(state.attempts.filter((row) => row.orderId === body.id).length, 0);
     assert.equal(state.products.find((row) => row.name === "Banana bread")?.onHand, 12);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const later = readState(dataPath);
+    assert.equal(later.stockOrders.some((row) => row.id === body.id), false);
+    assert.equal(later.attempts.filter((row) => row.orderId === body.id).length, 0);
+    assert.equal(later.products.find((row) => row.name === "Banana bread")?.onHand, 12);
+  });
+});
+
+describe("missing shop orders", () => {
+  let server: Server;
+  let base = "";
+  let dataPath = "";
+
+  before(async () => {
+    const started = await boot({ timeout: 80, delays: [40] });
+    server = started.server;
+    base = started.base;
+    dataPath = started.dataPath;
+  });
+
+  after(async () => {
+    await admin(base, "/admin/reset", { mode: "fixed" });
+    await new Promise<void>((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+  });
+
+  it("resends a missing order exactly once", async () => {
+    const res = await admin(base, "/admin/bad-delivery", {
+      product: "Banana bread",
+      qty: 1,
+      onShop: true,
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { id: string; status: number };
+    assert.equal(body.status, 401);
+    const state = await waitFor(() => {
+      const current = readState(dataPath);
+      const stock = current.stockOrders.filter((row) => row.id === body.id);
+      const ok = current.attempts.filter((row) => row.orderId === body.id && row.outcome === "ok");
+      const rejected = current.attempts.filter(
+        (row) => row.orderId === body.id && row.outcome === "rejected",
+      );
+      if (stock.length === 1 && ok.length === 1 && rejected.length === 1) return current;
+      return null;
+    });
+    assert.equal(state.products.find((row) => row.name === "Banana bread")?.onHand, 11);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const later = readState(dataPath);
+    assert.equal(later.stockOrders.filter((row) => row.id === body.id).length, 1);
+    assert.equal(later.attempts.filter((row) => row.orderId === body.id && row.outcome === "ok").length, 1);
+    const home = await (await fetch(`${base}/`)).text();
+    assert.match(home, /Didn't arrive, sent again, arrived/);
+    assert.doesNotMatch(home, /Rejected, not from your shop/);
+    const history = await (await fetch(`${base}/history`)).text();
+    assert.match(history, /Didn't arrive, sent again, arrived/);
+    assert.doesNotMatch(history, /Rejected, not from your shop/);
+  });
+
+  it("never resends an order stock already has", async () => {
+    await place(base, "Flat white");
+    const order = await waitFor(() => {
+      const current = readState(dataPath);
+      const row = current.shopOrders.find((item) => item.product === "Flat white");
+      if (!row) return null;
+      const stock = current.stockOrders.filter((item) => item.id === row.id);
+      const ok = current.attempts.filter((item) => item.orderId === row.id && item.outcome === "ok");
+      if (stock.length === 1 && ok.length === 1) return row;
+      return null;
+    });
+    const before = readState(dataPath).attempts.filter((row) => row.orderId === order.id).length;
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const later = readState(dataPath);
+    assert.equal(later.stockOrders.filter((row) => row.id === order.id).length, 1);
+    assert.equal(later.attempts.filter((row) => row.orderId === order.id).length, before);
+  });
+
+  it("never recovers a forged delivery the shop never made", async () => {
+    const hand = readState(dataPath).products.find((row) => row.name === "Long black")?.onHand;
+    const res = await admin(base, "/admin/bad-delivery", {
+      product: "Long black",
+      qty: 1,
+      onShop: false,
+    });
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { id: string; status: number };
+    assert.equal(body.status, 401);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    const state = readState(dataPath);
+    assert.equal(state.shopOrders.some((row) => row.id === body.id), false);
+    assert.equal(state.stockOrders.some((row) => row.id === body.id), false);
+    assert.equal(state.attempts.filter((row) => row.orderId === body.id && row.outcome === "ok").length, 0);
+    assert.equal(state.attempts.filter((row) => row.orderId === body.id && row.outcome === "rejected").length, 1);
+    assert.equal(state.products.find((row) => row.name === "Long black")?.onHand, hand);
+    const home = await (await fetch(`${base}/`)).text();
+    assert.match(home, /Rejected, not from your shop/);
   });
 });
 
