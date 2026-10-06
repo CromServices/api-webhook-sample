@@ -64,7 +64,7 @@ describe("GET / landing page", () => {
 
   it("leads with the owner outcome and one plain code link after the shop links", () => {
     assert.match(html, /<h1 class="crom-h1">Connect your systems<\/h1>/);
-    assert.match(html, new RegExp(`<p class="crom-lead">${STORY.lead}</p>`));
+    assert.match(html, new RegExp(`<p class="crom-lead"[^>]*>${STORY.lead}</p>`));
     assert.doesNotMatch(html, /holds no real data/);
     assert.equal((html.match(new RegExp(STORY.demo, "g")) ?? []).length, 0);
     const main = html.slice(html.indexOf("<main"), html.indexOf('<footer class="crom-footer">'));
