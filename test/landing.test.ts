@@ -44,6 +44,8 @@ describe("GET / landing page", () => {
     assert.match(html, /<footer class="crom-footer">/);
     assert.match(html, /<a href="https:\/\/cromservices\.com\.au"[^>]*aria-label="Built by Crom Services"/);
     assert.match(html, /Crom Services · Australia/);
+    assert.match(html, /Sam's Café · shop and stock/);
+    assert.doesNotMatch(visibleText(html), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
   });
 
   it("uses only the pinned crom-shared v1.0.2 theme (no inline stylesheet, no theme slot)", () => {
@@ -102,6 +104,8 @@ describe("GET / landing page", () => {
       assert.doesNotMatch(page, /\d{4}-\d{2}-\d{2}T|\/admin|hmac|signature|payload|bearer/i, path);
       assert.match(page, /<title>Shop-to-stock order sync: sample<\/title>/, path);
       assert.doesNotMatch(page, /Demo shop, not a real business|See the code on GitHub|Sample · example project/, path);
+      assert.match(page, /Sam's Café · shop and stock/, path);
+      assert.doesNotMatch(visibleText(page), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i, path);
     }
     const demo = await (await fetch(`${baseUrl}/demo`)).text();
     assert.equal((demo.match(/>Before and after</g) ?? []).length, 2);

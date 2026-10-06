@@ -11,6 +11,10 @@ function esc(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+function shopName(): string {
+  return `<p class="crom-eyebrow">${esc(STORY.shopName)}</p>`;
+}
+
 function nav(): string {
   return `<p style="display:flex;flex-wrap:wrap;gap:16px;margin:8px 0 0;">${STORY.nav
     .map((item) => `<a href="${item.href}">${esc(item.label)}</a>`)
@@ -45,7 +49,7 @@ function rows(view: View): string {
       const box = row.soft
         ? "background:var(--soft);border-radius:12px;padding:4px 10px;margin-top:6px;"
         : "padding:4px 0;border-top:1px solid var(--border);";
-      return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;${box}"><div><div style="font-weight:500;">${esc(row.text)}</div><div class="crom-small">${esc(row.when)}</div></div><span class="crom-chip">${esc(row.label)}</span></div>`;
+      return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;${box}"><div style="font-weight:500;">${esc(row.text)}</div><span class="crom-chip">${esc(row.label)}</span></div>`;
     })
     .join("");
   const products = view.products
@@ -70,7 +74,7 @@ function column(title: string, view: View, withHeadline = true): string {
 export function homePage(picture: Picture): string {
   const view = present(picture);
   return shell(`<section style="padding:0;">
-    <p class="crom-eyebrow">Crom Services · Australia</p>
+    ${shopName()}
     <h1 class="crom-h1">${esc(STORY.h1)}</h1>
     <p class="crom-lead" style="margin-top:8px;">${esc(STORY.lead)}</p>
     ${nav()}
@@ -90,6 +94,7 @@ export function shopPage(picture: Picture): string {
     .map((row) => `<option value="${esc(row.name)}">${esc(row.name)}</option>`)
     .join("");
   return shell(`<section style="padding:16px 0 0;">
+    ${shopName()}
     <h1 class="crom-h2">${esc(STORY.shop)}</h1>
     ${nav()}
     <form method="post" action="/shop/orders" style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:16px;">
@@ -111,6 +116,7 @@ export function shopPage(picture: Picture): string {
 export function stockPage(picture: Picture): string {
   const view = present(picture);
   return shell(`<section style="padding:16px 0 0;">
+    ${shopName()}
     <h1 class="crom-h2">${esc(STORY.stock)}</h1>
     ${nav()}
   </section>
@@ -127,6 +133,7 @@ export function historyPage(picture: Picture): string {
       ? `<p class="crom-note" style="margin:12px 0 0;">${esc(STORY.historyEmpty)}</p>`
       : lines.map((line) => `<p style="margin:12px 0 0;padding-top:12px;border-top:1px solid var(--border);">${esc(line)}</p>`).join("");
   return shell(`<section style="padding:16px 0 0;">
+    ${shopName()}
     <h1 class="crom-h2">${esc(STORY.history)}</h1>
     ${nav()}
   </section>
@@ -183,7 +190,7 @@ export function demoPage(
 ): string {
   if (view === "triage") {
     return shell(`<section style="padding:16px 0 0;">
-    <p class="crom-eyebrow">Crom Services · Australia</p>
+    ${shopName()}
     <h1 class="crom-h2">${esc(STORY.triageTitle)}</h1>
     ${nav()}
   </section>
@@ -192,7 +199,7 @@ export function demoPage(
   </section>`);
   }
   return shell(`<section style="padding:16px 0 0;">
-    <p class="crom-eyebrow">Crom Services · Australia</p>
+    ${shopName()}
     <h1 class="crom-h2">${esc(STORY.sideBySide)}</h1>
     ${nav()}
   </section>

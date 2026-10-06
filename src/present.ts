@@ -44,7 +44,7 @@ export function present(picture: Picture): View {
     const label = labelFor(order, picture);
     return {
       text: orderLine(order.id, order.qty, order.product),
-      when: humanTime(order.placedAt),
+      when: "",
       label,
       soft: label === STORY.arrivedTwice || label === STORY.neverArrived,
     };
@@ -64,7 +64,7 @@ export function present(picture: Picture): View {
     const label = attempt.outcome === "duplicate" ? STORY.duplicateStopped : STORY.rejected;
     extras.push({
       at: attempt.at,
-      text: `${humanTime(attempt.at)} · ${orderLine(attempt.orderId, attempt.qty, attempt.product)}. ${label}.`,
+      text: `${orderLine(attempt.orderId, attempt.qty, attempt.product)}. ${label}.`,
     });
   }
   extras.sort((a, b) => a.at.localeCompare(b.at));
@@ -157,21 +157,21 @@ export function historyLines(picture: Picture): string[] {
     const down = sorted.some((row) => row.outcome === "down");
     const ok = sorted.find((row) => row.outcome === "ok");
     if (ok && down) {
-      lines.push({ at: ok.at, text: `${humanTime(ok.at)} · ${text}. ${STORY.sentAgain}.` });
+      lines.push({ at: ok.at, text: `${text}. ${STORY.sentAgain}.` });
     } else if (ok) {
-      lines.push({ at: ok.at, text: `${humanTime(ok.at)} · ${text}. ${STORY.arrived}.` });
+      lines.push({ at: ok.at, text: `${text}. ${STORY.arrived}.` });
     }
     for (const attempt of sorted) {
       if (attempt.outcome === "duplicate") {
         lines.push({
           at: attempt.at,
-          text: `${humanTime(attempt.at)} · ${text}. ${STORY.duplicateStopped}.`,
+          text: `${text}. ${STORY.duplicateStopped}.`,
         });
       }
       if (attempt.outcome === "rejected") {
         lines.push({
           at: attempt.at,
-          text: `${humanTime(attempt.at)} · ${text}. ${STORY.rejected}.`,
+          text: `${text}. ${STORY.rejected}.`,
         });
       }
     }
