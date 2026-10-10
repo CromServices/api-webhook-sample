@@ -193,16 +193,24 @@ function handoff(state: FlowState, reason: HandoffReason): { state: FlowState; a
   };
 }
 
+/** 0491570006 -> "0491 570 006", (08) numbers -> "08 5550 1234", for the owner's text. */
+function spaced(phone: string): string {
+  if (/^04\d{8}$/.test(phone)) return `${phone.slice(0, 4)} ${phone.slice(4, 7)} ${phone.slice(7)}`;
+  if (/^0\d{9}$/.test(phone)) return `${phone.slice(0, 2)} ${phone.slice(2, 6)} ${phone.slice(6)}`;
+  return phone;
+}
+
+/** Plain GSM characters only, so a text is 2 segments at most for a normal message. */
 function ownerText(state: FlowState): string {
   const wanted =
     state.handoffReason === "change"
-      ? "wants to change an order"
+      ? "want to change an order"
       : state.handoffReason === "person"
         ? "asked to talk to you"
         : state.handoffReason === "no_match"
           ? "asked about an order, but the details didn't match"
           : "called, but the line was hard to hear";
-  const who = state.caller ? `Missed call from ${state.caller}` : "Missed call (no caller number)";
+  const who = state.caller ? `Missed call from ${spaced(state.caller)}` : "Missed call (no caller number)";
   const order = state.orderNumber ? ` about order ${state.orderNumber}` : "";
   const message = state.message ? ` Message: "${state.message}"` : " No message left.";
   return `${SHOP_NAME} line. ${who}${order}. They ${wanted}.${message} Please call them back.`;

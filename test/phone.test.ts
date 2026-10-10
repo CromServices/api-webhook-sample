@@ -318,8 +318,9 @@ describe("phone line: call flow (scripted calls, mock phone and texts)", () => {
     assert.equal(ran.said.at(-1), LINES.messageTaken);
     assert.equal(ran.connected, false);
     assert.equal(ran.texts.length, 1);
-    assert.match(ran.texts[0]!.body, /wants to change an order/);
-    assert.match(ran.texts[0]!.body, /\(08\) 5550 1234|0855501234/);
+    assert.match(ran.texts[0]!.body, /They want to change an order\./);
+    assert.match(ran.texts[0]!.body, /Missed call from 08 5550 1234\./);
+    assert.ok(ran.texts[0]!.body.length <= 306, "two SMS segments at most");
     assert.match(ran.texts[0]!.body, /Please cancel my banana bread/);
     assert.match(ran.texts[0]!.body, /about order 1043|Missed call from/);
     const [entry] = log.list();
