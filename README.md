@@ -119,3 +119,15 @@ Site: https://cromservices.com.au · Packs: https://cromservices.github.io/job-p
 <a href="https://cromservices.com.au"><picture><source media="(prefers-color-scheme: dark)" srcset="https://cromservices.com.au/brand/credit/crom-credit-lockup-dark@2x.png"><img src="https://cromservices.com.au/brand/credit/crom-credit-lockup-light@2x.png" width="175" height="20" alt="Built by Crom Services"></picture></a>
 
 MIT, see LICENSE.
+
+## Phone line (sample, not switched on)
+
+`src/phone/` adds a read-only "where's my order" phone line for Sam's Café. Nothing in it can change an order.
+
+- `POST /phone/lookup`: body `{ "orderNumber": "...", "contact": "<AU phone or email>" }`, header `x-phone-line-key`. Returns `{ match: true, status, say }` only when the contact belongs to the order, otherwise the same `{ match: false, say }` whatever was wrong. AU phone formats and email case are normalised. Limited to 30 lookups a minute, and an order number with 5 wrong tries in 15 minutes is held (same "couldn't match" answer).
+- `src/phone/flow.ts`: the call as a pure state machine (greet, order number, contact, status; change requests, "talk to someone" and two failed matches go to the owner; no answer means a message and a text to the owner).
+- `src/phone/session.ts`: runs the flow against phone, text and lookup adapters (mocked in `test/phone.test.ts`).
+- `GET /calls`: the private call log, behind a sign-in.
+- Orders come from a sample order book in `src/phone/orders.ts` (ACMA fiction-range numbers, example.com emails). It is part of the build, so it is the same after every restart.
+
+Both routes answer 404 until these are set with `fly secrets set` (never in the repo): `PHONE_LINE_KEY`, `CALL_LOG_USER`, `CALL_LOG_PASSWORD`. Optional: `CALL_LOG_PATH` (keep it on a volume, or calls are lost on restart), `SHOP_TIME_ZONE` (default Australia/Sydney), `DATA_SEED_PATH` (start the shop from a saved copy when the data file is missing; `GET /admin/state` downloads one).
