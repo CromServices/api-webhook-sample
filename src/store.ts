@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { STORY } from "./story.ts";
 
@@ -115,8 +115,17 @@ function picture(state: State): Picture {
   };
 }
 
-export function openStore(dataPath: string): Store {
+/**
+ * seedPath (optional): when the data file is missing at start (a fresh Fly
+ * machine, a restart or a redeploy wipes the machine disk), start from this
+ * saved copy instead of an empty shop. Unset means the old behaviour.
+ */
+export function openStore(dataPath: string, seedPath?: string): Store {
   mkdirSync(path.dirname(dataPath), { recursive: true });
+  if (seedPath && !existsSync(dataPath) && existsSync(seedPath)) {
+    JSON.parse(readFileSync(seedPath, "utf8")) as State;
+    copyFileSync(seedPath, dataPath);
+  }
   let state: State = existsSync(dataPath)
     ? (JSON.parse(readFileSync(dataPath, "utf8")) as State)
     : seed("fixed");

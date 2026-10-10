@@ -7,6 +7,7 @@ import { orderPayload, sendMissing, startDelivery, type DeliveryDeps } from "./d
 import { demoPage, historyPage, homePage, shopPage, stockPage } from "./pages.ts";
 import { openStore, type Picture } from "./store.ts";
 import { verifyHmacHeader } from "./verify.ts";
+import { mountPhoneLine, type PhoneLineOptions } from "./phone/routes.ts";
 
 /**
  * Published public sample secret for the disposable hosted demo.
@@ -28,6 +29,10 @@ export type AppOptions = {
   webhookUrl?: () => string;
   retryDelaysMs?: number[];
   clientTimeoutMs?: number;
+  /** Saved shop to start from when the data file is missing. Unset = start empty, as before. */
+  dataSeedPath?: string;
+  /** Phone line. Its routes stay closed (404) unless their secrets are set. */
+  phoneLine?: PhoneLineOptions;
 };
 
 export type DemoApp = Express & {
@@ -73,7 +78,7 @@ function sleep(ms: number): Promise<void> {
 export function createApp(opts: AppOptions): DemoApp {
   const dataPath =
     opts.dataPath ?? path.join(mkdtempSync(path.join(tmpdir(), "crom-shop-")), "demo-shop.json");
-  const store = openStore(dataPath);
+  const store = openStore(dataPath, opts.dataSeedPath);
   const inflight = new Set<string>();
   const recovered = new Set<string>();
   const deps: DeliveryDeps = {
@@ -292,6 +297,13 @@ export function createApp(opts: AppOptions): DemoApp {
     res.status(200).json({ ok: true });
   });
 
+  /** Download the saved shop (to keep as a seed file after a capture run). */
+  app.get("/admin/state", (req: Request, res: Response) => {
+    if (!requireAdmin(req, res)) return;
+    res.set("cache-control", "no-store");
+    res.status(200).json(store.snapshot());
+  });
+
   app.post("/admin/reset", (req: Request, res: Response) => {
     if (!requireAdmin(req, res)) return;
     const mode = req.body?.mode === "old" ? "old" : "fixed";
@@ -300,6 +312,8 @@ export function createApp(opts: AppOptions): DemoApp {
     store.reset(mode);
     res.status(200).json({ ok: true });
   });
+
+  mountPhoneLine(app, opts.phoneLine);
 
   return Object.assign(app, {
     resumePending() {

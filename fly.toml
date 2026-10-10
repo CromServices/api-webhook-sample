@@ -13,9 +13,13 @@ primary_region = "syd"
   # sample value — never a client secret. Override with
   # `fly secrets set WEBHOOK_SECRET=...` if the documented value changes.
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
-  # One machine, one file on that machine's disk. Auto-stop keeps the disk.
-  # A new deploy starts empty. Do not attach a volume (deploy fails if it is
-  # missing). Set DEMO_ADMIN_TOKEN with `fly secrets set` — never commit it.
+  # One machine, one file on that machine's disk. That disk is wiped on every
+  # stop/start (auto-stop included), restart and deploy (Fly docs: the root
+  # file system is ephemeral unless persist_rootfs or a volume is set), so the
+  # shop starts empty after any of them. Optional DATA_SEED_PATH starts it from
+  # a saved copy instead; CALL_LOG_PATH needs a volume to keep calls.
+  # No volume is attached yet; add a [mounts] section only once one is approved
+  # (it is infra and spend). Set DEMO_ADMIN_TOKEN with `fly secrets set` — never commit it.
   DATA_PATH = "/app/data/demo-shop.json"
 
 [http_service]
