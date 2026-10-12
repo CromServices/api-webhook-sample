@@ -10,10 +10,10 @@ function esc(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-/** 0491570006 -> "0491 570 006"; 0855501234 -> "(08) 5550 1234". */
+/** Never the whole number on screen: 0491570006 -> "Mobile ending 006"; 0855501234 -> "(08) number ending 234". */
 export function showPhone(value: string): string {
-  if (/^04\d{8}$/.test(value)) return `${value.slice(0, 4)} ${value.slice(4, 7)} ${value.slice(7)}`;
-  if (/^0[2378]\d{8}$/.test(value)) return `(${value.slice(0, 2)}) ${value.slice(2, 6)} ${value.slice(6)}`;
+  if (/^04\d{8}$/.test(value)) return `Mobile ending ${value.slice(7)}`;
+  if (/^0[2378]\d{8}$/.test(value)) return `(${value.slice(0, 2)}) number ending ${value.slice(7)}`;
   return value ? "Number given" : "Number hidden";
 }
 
@@ -50,6 +50,8 @@ function sentence(list: string[]): string {
 
 function passed(entry: CallLogEntry): string {
   if (!entry.handedOver) return "No";
+  if (entry.voicemail === "left") return "Yes, left a message";
+  if (entry.voicemail === "none") return "Yes, but they hung up before leaving a message";
   if (entry.ownerAnswered) return `Yes, ${OWNER_NAME} picked up`;
   if (entry.textedOwner && entry.message) return `Yes, no answer, so a message was taken and ${OWNER_NAME} got a text`;
   if (entry.textedOwner) return `Yes, no answer, so ${OWNER_NAME} got a text`;
@@ -60,7 +62,9 @@ function row(label: string, value: string): string {
   return `<div style="display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:12px;padding:6px 0;border-top:1px solid var(--border);"><div class="crom-note" style="margin:0;">${esc(label)}</div><div style="font-weight:500;">${esc(value)}</div></div>`;
 }
 
-function card(entry: CallLogEntry, timeZone: string): string {
+type PageOpts = { voicemailHref?: (ref: string) => string };
+
+function card(entry: CallLogEntry, timeZone: string, opts: PageOpts = {}): string {
   const chip = entry.handedOver ? `Passed to ${OWNER_NAME}` : "Answered";
   const rows = [
     row("Caller", showPhone(entry.caller)),
@@ -69,6 +73,14 @@ function card(entry: CallLogEntry, timeZone: string): string {
     row(`Passed to ${OWNER_NAME}`, passed(entry)),
   ];
   if (entry.message) rows.push(row("Message", `"${entry.message}"`));
+  if (entry.textStatus === "not_set_up") rows.push(row(`Text to ${OWNER_NAME}`, "Not set up yet"));
+  if (entry.textStatus === "sent") rows.push(row(`Text to ${OWNER_NAME}`, "Sent"));
+  if (entry.recordingUrl && entry.ref && opts.voicemailHref) {
+    const secs = entry.recordingSeconds ? ` (${entry.recordingSeconds} sec)` : "";
+    rows.push(
+      `<div style="display:grid;grid-template-columns:minmax(110px,30%) 1fr;gap:12px;padding:6px 0;border-top:1px solid var(--border);"><div class="crom-note" style="margin:0;">Voicemail</div><div style="font-weight:500;"><a href="${esc(opts.voicemailHref(entry.ref))}">Listen${esc(secs)}</a></div></div>`,
+    );
+  }
   return `<section style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;">
     <h2 class="crom-h3" style="margin:0;">${esc(when(entry.startedAt, timeZone))}</h2>
@@ -79,10 +91,10 @@ function card(entry: CallLogEntry, timeZone: string): string {
 </section>`;
 }
 
-export function callLogPage(entries: CallLogEntry[], timeZone = "Australia/Sydney"): string {
+export function callLogPage(entries: CallLogEntry[], timeZone = "Australia/Sydney", opts: PageOpts = {}): string {
   const passedCount = entries.filter((e) => e.handedOver).length;
   const body = entries.length
-    ? entries.map((e) => card(e, timeZone)).join("")
+    ? entries.map((e) => card(e, timeZone, opts)).join("")
     : `<p class="crom-note" style="margin-top:16px;">No calls yet.</p>`;
   const totals = entries.length
     ? `<p style="font-weight:600;margin:12px 0 0;">${entries.length} ${entries.length === 1 ? "call" : "calls"}. ${passedCount} passed to ${OWNER_NAME}.</p>`

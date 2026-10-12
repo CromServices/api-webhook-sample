@@ -5,6 +5,8 @@ import { createRateLimiter, lookupOrder, NO_MATCH_SAY } from "./lookup.ts";
 import { normaliseOrderNumber } from "./normalise.ts";
 import { sampleOrderSource, type OrderSource } from "./orders.ts";
 import { callLogPage } from "./page.ts";
+import { mountTwilio, type TwilioOptions } from "./twilio.ts";
+import type { Server } from "node:http";
 
 export type PhoneLineOptions = {
   /** Shared secret the voice side sends in x-phone-line-key. Empty = lookup closed (404). */
@@ -21,6 +23,8 @@ export type PhoneLineOptions = {
   failsPerOrder?: number;
   failWindowMs?: number;
   now?: () => number;
+  /** Twilio voice side. Omit to leave /phone/voice etc. unmounted. */
+  twilio?: Omit<TwilioOptions, "callLog" | "lookup">;
 };
 
 function same(a: string, b: string): boolean {
@@ -49,7 +53,10 @@ function basicOk(user: string, password: string, header: string | undefined): bo
  *   POST /phone/lookup  read-only order status for the voice side
  *   GET  /calls         private call log page
  */
-export function mountPhoneLine(app: Express, opts: PhoneLineOptions = {}): { callLog: CallLog } {
+export function mountPhoneLine(
+  app: Express,
+  opts: PhoneLineOptions = {},
+): { callLog: CallLog; attach: (server: Server) => void; bridge?: ReturnType<typeof mountTwilio>["bridge"] } {
   const orders = opts.orders ?? sampleOrderSource();
   const callLog = opts.callLog ?? openCallLog();
   const lookupKey = opts.lookupKey ?? "";
@@ -60,6 +67,28 @@ export function mountPhoneLine(app: Express, opts: PhoneLineOptions = {}): { cal
     windowMs: opts.failWindowMs ?? 15 * 60_000,
     now,
   });
+
+  function limitedLookup(orderNumber: unknown, contact: unknown, who: string) {
+    if (!perLine.take(who)) return "slow" as const;
+    const number = typeof orderNumber === "string" ? normaliseOrderNumber(orderNumber) : null;
+    // An order number that has had too many wrong tries gets the same
+    // "couldn't match" as anything else, so the limit gives nothing away.
+    if (number && perOrder.blocked(`order:${number}`)) return { match: false as const, say: NO_MATCH_SAY };
+    const result = lookupOrder(orders, orderNumber, contact);
+    if (!result.match && number) perOrder.take(`order:${number}`);
+    return result;
+  }
+
+  const twilio = opts.twilio
+    ? mountTwilio(app, null, {
+        ...opts.twilio,
+        callLog,
+        lookup: (o, c) => {
+          const r = limitedLookup(o, c, "phone");
+          return r === "slow" ? { match: false, say: NO_MATCH_SAY } : r;
+        },
+      })
+    : null;
 
   app.post("/phone/lookup", (req: Request, res: Response) => {
     res.set("cache-control", "no-store");
@@ -72,39 +101,46 @@ export function mountPhoneLine(app: Express, opts: PhoneLineOptions = {}): { cal
       return;
     }
     const ip = req.header("fly-client-ip") ?? req.ip ?? "unknown";
-    if (!perLine.take(`line:${ip}`)) {
+    const result = limitedLookup(req.body?.orderNumber, req.body?.contact, `line:${ip}`);
+    if (result === "slow") {
       res.status(429).json({ error: "slow down" });
       return;
     }
-    const orderNumber = req.body?.orderNumber;
-    const contact = req.body?.contact;
-    const number = typeof orderNumber === "string" ? normaliseOrderNumber(orderNumber) : null;
-    // An order number that has had too many wrong tries gets the same
-    // "couldn't match" as anything else, so the limit gives nothing away.
-    if (number && perOrder.blocked(`order:${number}`)) {
-      res.status(200).json({ match: false, say: NO_MATCH_SAY });
-      return;
-    }
-    const result = lookupOrder(orders, orderNumber, contact);
-    if (!result.match && number) perOrder.take(`order:${number}`);
     res.status(200).json(result.match ? { match: true, status: result.status, say: result.say } : { match: false, say: result.say });
   });
 
-  app.get("/calls", (req: Request, res: Response) => {
+  function ownerOnly(req: Request, res: Response): boolean {
     const user = opts.viewUser ?? "";
     const password = opts.viewPassword ?? "";
     res.set("cache-control", "no-store");
     if (!user || !password) {
       res.status(404).type("text").send("Not found");
-      return;
+      return false;
     }
     if (!basicOk(user, password, req.header("authorization") ?? undefined)) {
       res.set("www-authenticate", 'Basic realm="Calls", charset="UTF-8"');
       res.status(401).type("text").send("Sign in to see calls.");
-      return;
+      return false;
     }
-    res.status(200).type("html").send(callLogPage(callLog.list(), opts.timeZone));
+    return true;
+  }
+
+  app.get("/calls", (req: Request, res: Response) => {
+    if (!ownerOnly(req, res)) return;
+    res
+      .status(200)
+      .type("html")
+      .send(callLogPage(callLog.list(), opts.timeZone, { voicemailHref: twilio?.voicemailHref }));
   });
 
-  return { callLog };
+  app.get("/calls/voicemail/:key", async (req: Request, res: Response) => {
+    if (!ownerOnly(req, res)) return;
+    if (!twilio) {
+      res.status(404).type("text").send("Not found");
+      return;
+    }
+    await twilio.sendVoicemail(String(req.params.key), res);
+  });
+
+  return { callLog, attach: (server) => twilio?.attach(server), bridge: twilio?.bridge };
 }

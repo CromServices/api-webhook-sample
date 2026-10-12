@@ -1,0 +1,22 @@
+# Deploying the phone line sample
+
+Separate Fly app `crom-phone-line-sample` (syd, shared-cpu-1x 256 MB, auto-stop, min 0, 1 GB volume `phone_data` at /data).
+Never deploy this config to crom-api-webhook-demo.
+
+    flyctl apps create crom-phone-line-sample
+    flyctl volumes create phone_data --size 1 --region syd -a crom-phone-line-sample
+    flyctl secrets import -a crom-phone-line-sample   # from stdin, never echo:
+      XAI_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+      PHONE_LINE_KEY, CALL_LOG_USER, CALL_LOG_PASSWORD, [OWNER_NUMBER]
+    flyctl deploy -c fly.phone.toml --remote-only --depot=false
+
+Env in fly.phone.toml: PUBLIC_BASE_URL, DATA_PATH=/data/demo-shop.json, CALL_LOG_PATH=/data/calls.json, SHOP_TIME_ZONE.
+Optional: PHONE_TRANSCRIPT_LOG=1 prints a timed transcript (test calls only; contains what callers say).
+
+Then point the Twilio number's Voice URL (POST) at `https://crom-phone-line-sample.fly.dev/phone/voice`.
+Every /phone/* webhook answers 403 until TWILIO_AUTH_TOKEN and PUBLIC_BASE_URL are set and the signature checks out.
+
+Checks: `GET /health` -> {"ok":true}; unsigned `POST /phone/voice` -> 403; `GET /calls` -> 401 without the login.
+
+Test calls: `npx tsx scripts/test-calls.ts happy-path ...` rings only the shop line, writes calls-spend.csv,
+stops at A$40. Needs Twilio voice geo permission for Australia on the account.

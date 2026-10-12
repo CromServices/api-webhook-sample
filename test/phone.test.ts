@@ -397,14 +397,16 @@ describe("phone line: call log page", () => {
     assert.match(visible, /Told On its way/);
     assert.match(visible, /Passed to Sam Yes, Sam picked up/);
     assert.match(visible, /Passed to Sam No/);
-    assert.match(visible, /0491 570 156/);
+    assert.match(visible, /Mobile ending 156/);
+    // Never a whole phone number on screen.
+    assert.doesNotMatch(visible, /0491\s?570\s?156|04\d{8}|\d{4} \d{3} \d{3}|5550 1234/);
     assert.match(visible, /5 calls\. 4 passed to Sam\./);
     assert.match(visible, /then Sam will call back/);
   });
 
-  it("formats numbers the way people read them", () => {
-    assert.equal(showPhone("0491570006"), "0491 570 006");
-    assert.equal(showPhone("0855501234"), "(08) 5550 1234");
+  it("masks numbers: only the last three digits show", () => {
+    assert.equal(showPhone("0491570006"), "Mobile ending 006");
+    assert.equal(showPhone("0855501234"), "(08) number ending 234");
     assert.equal(showPhone(""), "Number hidden");
   });
 

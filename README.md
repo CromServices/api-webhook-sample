@@ -131,3 +131,12 @@ MIT, see LICENSE.
 - Orders come from a sample order book in `src/phone/orders.ts` (ACMA fiction-range numbers, example.com emails). It is part of the build, so it is the same after every restart.
 
 Both routes answer 404 until these are set with `fly secrets set` (never in the repo): `PHONE_LINE_KEY`, `CALL_LOG_USER`, `CALL_LOG_PASSWORD`. Optional: `CALL_LOG_PATH` (keep it on a volume, or calls are lost on restart), `SHOP_TIME_ZONE` (default Australia/Sydney), `DATA_SEED_PATH` (start the shop from a saved copy when the data file is missing; `GET /admin/state` downloads one).
+
+### Voice (Twilio + xAI)
+
+`POST /phone/voice` answers with `<Connect><Stream>` to `/phone/stream`; the bridge feeds μ-law 8 kHz audio
+to a `VoiceProvider` (xAI Grok Voice by default). The provider only hears and speaks: the flow in
+`src/phone/flow.ts` decides every line and can never change an order. **Swap point:** `src/phone/voice/provider.ts`
+(`VoiceProvider`); choose the provider in `src/server.ts`. A stub for Retell / native Grok SIP is there.
+Handover to Sam: `<Dial>` OWNER_NUMBER if set, otherwise voicemail (`<Record>`), logged on the owner-only `/calls` page.
+See DEPLOY.md.

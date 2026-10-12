@@ -6,13 +6,21 @@ import type { CallLog } from "./calllog.ts";
 export type Telephony = {
   say(text: string): void | Promise<void>;
   /** Ring the owner's handoff number. Resolves when they pick up or it rings out. */
-  ringOwner(): Promise<"answered" | "no_answer">;
+  ringOwner(): Promise<"answered" | "no_answer" | "handed_to_phone">;
   connectOwner(): void | Promise<void>;
   hangUp(): void | Promise<void>;
 };
 
 export type TextSender = {
+  /** False until a sender (registered name or SMS number) is set up. Then nothing is sent. */
+  readonly enabled?: boolean;
   send(to: string, body: string): Promise<void>;
+};
+
+/** The texting adapter until a sender is registered: sends nothing, says so in the log. */
+export const TEXTS_NOT_SET_UP: TextSender = {
+  enabled: false,
+  async send() {},
 };
 
 export type SessionDeps = {
@@ -24,6 +32,8 @@ export type SessionDeps = {
   /** Where handoff texts go (the owner's mobile, or a test voicemail line). Never hard-coded. */
   ownerTextTo: string;
   now?: () => Date;
+  /** Private reference for this call (e.g. the phone provider's call id). Never shown on screen. */
+  ref?: string;
 };
 
 /**
@@ -36,6 +46,7 @@ export class CallSession {
   private startedAt: Date;
   private readonly now: () => Date;
   readonly actions: FlowAction[] = [];
+  private textStatus: "sent" | "not_set_up" | null = null;
 
   constructor(private readonly deps: SessionDeps) {
     this.now = deps.now ?? (() => new Date());
@@ -89,13 +100,19 @@ export class CallSession {
       }
       case "ring_owner": {
         const answer = await telephony.ringOwner();
+        if (answer === "handed_to_phone") return { type: "handed_to_phone" };
         return { type: answer === "answered" ? "owner_answered" : "owner_no_answer" };
       }
       case "connect_owner":
         await telephony.connectOwner();
         return null;
       case "text_owner":
+        if (this.deps.sms.enabled === false || !this.deps.ownerTextTo) {
+          this.textStatus = "not_set_up";
+          return null;
+        }
         await this.deps.sms.send(this.deps.ownerTextTo, action.body);
+        this.textStatus = "sent";
         return null;
       case "hang_up":
         await telephony.hangUp();
@@ -107,6 +124,13 @@ export class CallSession {
   }
 
   private writeLog(summary: CallSummary): void {
-    this.deps.log.add({ ...summary, startedAt: this.startedAt.toISOString(), endedAt: this.now().toISOString() });
+    this.deps.log.add({
+      ...summary,
+      textedOwner: summary.textedOwner && this.textStatus === "sent",
+      textStatus: summary.textedOwner ? this.textStatus : null,
+      ref: this.deps.ref,
+      startedAt: this.startedAt.toISOString(),
+      endedAt: this.now().toISOString(),
+    });
   }
 }

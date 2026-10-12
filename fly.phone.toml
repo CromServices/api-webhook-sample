@@ -1,0 +1,43 @@
+# Phone line sample: a SEPARATE Fly app from crom-api-webhook-demo (never deploy this config there).
+#   flyctl deploy -c fly.phone.toml
+# Secrets (fly secrets set, never here): XAI_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN,
+# PHONE_LINE_KEY, CALL_LOG_USER, CALL_LOG_PASSWORD, optional OWNER_NUMBER.
+app = "crom-phone-line-sample"
+primary_region = "syd"
+
+[build]
+  dockerfile = "Dockerfile.phone"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  PUBLIC_BASE_URL = "https://crom-phone-line-sample.fly.dev"
+  # Calls and the demo shop live on the 1 GB volume, so they survive stops and deploys.
+  DATA_PATH = "/data/demo-shop.json"
+  CALL_LOG_PATH = "/data/calls.json"
+  SHOP_TIME_ZONE = "Australia/Perth"
+  WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
+
+[mounts]
+  source = "phone_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -83,6 +83,8 @@ export type FlowEvent =
   | { type: "lookup_done"; result: LookupResult }
   | { type: "owner_answered" }
   | { type: "owner_no_answer" }
+  /** The phone side (Twilio) takes over ringing Sam / voicemail. Its callbacks finish the log entry. */
+  | { type: "handed_to_phone" }
   | { type: "hung_up" };
 
 export type CallSummary = {
@@ -342,6 +344,10 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
             { type: "log", summary: summary(next) },
           ],
         };
+      }
+      if (event.type === "handed_to_phone") {
+        const next = { ...state, phase: "done" as const };
+        return { state: next, actions: [{ type: "log", summary: summary(next) }] };
       }
       if (event.type === "owner_no_answer") {
         return {

@@ -30,6 +30,24 @@ export function spokenDigits(input: string): string {
     .trim()
     .split(/\s+/)
     .filter(Boolean);
+  // "ten forty two" / "forty-two": spoken pairs, as transcribers often write order numbers.
+  const TEENS: Record<string, string> = {
+    ten: "10", eleven: "11", twelve: "12", thirteen: "13", fourteen: "14",
+    fifteen: "15", sixteen: "16", seventeen: "17", eighteen: "18", nineteen: "19",
+  };
+  const TENS: Record<string, string> = {
+    twenty: "2", thirty: "3", forty: "4", fifty: "5", sixty: "6", seventy: "7", eighty: "8", ninety: "9",
+  };
+  for (let i = 0; i < tokens.length; i += 1) {
+    const t = tokens[i]!;
+    if (TEENS[t]) tokens[i] = TEENS[t]!;
+    else if (TENS[t]) {
+      const unit = WORD_DIGITS[tokens[i + 1] ?? ""];
+      if (unit && unit !== "0" && tokens[i + 1] !== "oh" && tokens[i + 1] !== "o") {
+        tokens.splice(i, 2, TENS[t]! + unit);
+      } else tokens[i] = TENS[t]! + "0";
+    }
+  }
   let out = "";
   let repeat = 1;
   for (const token of tokens) {

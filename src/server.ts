@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createApp, DEMO_WEBHOOK_SECRET } from "./app.ts";
 import { openCallLog } from "./phone/calllog.ts";
+import { XaiVoiceProvider } from "./phone/voice/xai.ts";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
@@ -21,10 +22,25 @@ const app = createApp({
     viewPassword: process.env.CALL_LOG_PASSWORD ?? "",
     callLog: openCallLog(process.env.CALL_LOG_PATH || undefined),
     timeZone: process.env.SHOP_TIME_ZONE ?? "Australia/Sydney",
+    // Twilio voice side. Every /phone/* webhook answers 403 until
+    // TWILIO_AUTH_TOKEN and PUBLIC_BASE_URL are set.
+    // Swap point: replace XaiVoiceProvider with another VoiceProvider.
+    twilio: {
+      authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+      accountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+      publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
+      ownerNumber: process.env.OWNER_NUMBER || undefined,
+      transcriptLog: process.env.PHONE_TRANSCRIPT_LOG === "1",
+      provider: new XaiVoiceProvider({
+        apiKey: process.env.XAI_API_KEY ?? "",
+        voice: process.env.XAI_VOICE || undefined,
+      }),
+    },
   },
 });
 
-app.listen(port, host, () => {
+const server = app.listen(port, host, () => {
   app.resumePending();
   console.log(`Crom Services sample listening on ${host}:${port}`);
 });
+app.attachPhone(server);

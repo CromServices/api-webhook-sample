@@ -5,12 +5,25 @@ import type { CallSummary } from "./flow.ts";
 export type CallLogEntry = CallSummary & {
   startedAt: string;
   endedAt: string;
+  /** Private call reference (phone provider's call id). Used to match callbacks; never shown. */
+  ref?: string;
+  /** Whether the text to the owner went: sent, not set up yet, or not needed (null). */
+  textStatus?: "sent" | "not_set_up" | null;
+  /** "left" when the caller left a voicemail, "none" when they hung up at the tone. */
+  voicemail?: "left" | "none" | null;
+  /** Private recording location (provider URL). Only served through the signed-in page. */
+  recordingUrl?: string | null;
+  recordingSeconds?: number | null;
+  /** Seconds the voice provider was connected (for spend). Not shown. */
+  voiceSeconds?: number;
 };
 
 export type CallLog = {
   add(entry: CallLogEntry): void;
   /** Newest first. */
   list(): CallLogEntry[];
+  /** Change the newest entry with this private reference. False if none. */
+  update(ref: string, patch: Partial<CallLogEntry>): boolean;
 };
 
 const KEEP = 1000;
@@ -45,6 +58,16 @@ export function openCallLog(filePath?: string): CallLog {
       rows.push(structuredClone(entry));
       if (rows.length > KEEP) rows = rows.slice(rows.length - KEEP);
       persist();
+    },
+    update(ref, patch) {
+      for (let i = rows.length - 1; i >= 0; i -= 1) {
+        if (rows[i]!.ref === ref) {
+          rows[i] = { ...rows[i]!, ...structuredClone(patch) };
+          persist();
+          return true;
+        }
+      }
+      return false;
     },
     list() {
       return [...rows]

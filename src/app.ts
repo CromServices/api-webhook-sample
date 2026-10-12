@@ -37,6 +37,8 @@ export type AppOptions = {
 
 export type DemoApp = Express & {
   resumePending: () => void;
+  /** Hook the phone line's media-stream websocket onto the HTTP server. */
+  attachPhone: (server: import("node:http").Server) => void;
 };
 
 type OrderFields = { id: string; product: string; qty: number };
@@ -313,9 +315,10 @@ export function createApp(opts: AppOptions): DemoApp {
     res.status(200).json({ ok: true });
   });
 
-  mountPhoneLine(app, opts.phoneLine);
+  const phone = mountPhoneLine(app, opts.phoneLine);
 
   return Object.assign(app, {
+    attachPhone: phone.attach,
     resumePending() {
       for (const order of store.pending()) startDelivery(order, deps);
       sendMissing(deps);
