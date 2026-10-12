@@ -17,6 +17,8 @@ export type VoiceEvents = {
   onHeard(text: string): void;
   /** The caller started talking (for barge-in / silence timers). */
   onSpeechStarted?(): void;
+  /** The caller talked over an interruptible line; the provider stopped it. Drop queued audio. */
+  onInterrupted?(): void;
   /** Something went wrong; the session may be unusable. */
   onError?(message: string): void;
   /** Provider usage, for spend tracking (seconds of open session etc.). */
@@ -26,8 +28,11 @@ export type VoiceEvents = {
 export type VoiceSession = {
   /** Caller audio in, base64 μ-law 8 kHz. */
   sendAudio(mulawB64: string): void;
-  /** Speak this exact line. Resolves when the provider has sent all its audio. */
-  say(text: string): Promise<void>;
+  /**
+   * Speak this exact line. Resolves when the provider has sent all its audio,
+   * or early if `interruptible` and the caller starts talking (barge-in).
+   */
+  say(text: string, opts?: { interruptible?: boolean }): Promise<void>;
   /** End the session and release the provider connection. */
   end(): Promise<void>;
 };

@@ -1,0 +1,63 @@
+[
+ {
+  "call": "call-1",
+  "t": 14.94,
+  "text": "A thousand and forty-two is my number.",
+  "issue": "misheard",
+  "lineReply": "Sorry, I didn't catch that. What's the order number?",
+  "expect": "number"
+ },
+ {
+  "call": "call-1",
+  "t": 22.61,
+  "text": "A thousand and forty-two",
+  "issue": "misheard",
+  "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam.",
+  "expect": "number"
+ },
+ {
+  "call": "call-2",
+  "t": 14.4,
+  "text": "Account number 42",
+  "issue": "misheard",
+  "lineReply": "Sorry, I didn't catch that. What's the order number?"
+ },
+ {
+  "call": "call-2",
+  "t": 21.31,
+  "text": "A thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?",
+  "expect": "number"
+ },
+ {
+  "call": "call-2",
+  "t": 42.41,
+  "text": "I said yes it was, one thousand and forty-two.",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?",
+  "expect": "number"
+ },
+ {
+  "call": "call-2",
+  "t": 50.43,
+  "text": "0 4 9 1",
+  "issue": "misheard",
+  "lineReply": "Sorry, I didn't catch that. What's the mobile number or email you used for the order?"
+ },
+ {
+  "call": "call-2",
+  "t": 60.56,
+  "text": "0 4 9 1 5 7 0 1 1 0",
+  "issue": "misheard",
+  "lineReply": "Sorry, I couldn't match those details to an order. Let's try once more. What's the order number?",
+  "expect": "contact"
+ },
+ {
+  "call": "call-2",
+  "t": 69.28,
+  "text": "Zero",
+  "issue": "misheard",
+  "lineReply": "Sorry, I didn't catch that. What's the order number?"
+ }
+]

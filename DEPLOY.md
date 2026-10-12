@@ -20,3 +20,13 @@ Checks: `GET /health` -> {"ok":true}; unsigned `POST /phone/voice` -> 403; `GET 
 
 Test calls: `npx tsx scripts/test-calls.ts happy-path ...` rings only the shop line, writes calls-spend.csv,
 stops at A$40. Needs Twilio voice geo permission for Australia on the account.
+
+## Flags (off by default, for the next live test)
+- `PHONE_BARGE_IN=1`: callers can talk over the line's questions. xAI stops an interruptible forced line on caller speech, and the bridge sends Twilio `clear`.
+- `PHONE_CONFIRM_REASK=1`: silence after "Is that order …?" repeats the yes/no question.
+- `PHONE_JOIN_MS=900`: how long a caller's speech piece is held so it can be joined with the next. The join wait and reply gap are saved per call (`timings`, not shown on the page).
+
+## Intent checks
+- `npx tsx scripts/eval-intents.ts` scores our own Australian phrase list and the real (masked) call turns.
+- Set `PHRASEBANK_DIR` to also score the internal public-dataset corpus. That corpus is kept out of this repo.
+- `npx tsx scripts/transcript-loop.ts <call> <transcript.txt>` adds a call's turns (numbers masked) to `test/fixtures/call-turns.json`.

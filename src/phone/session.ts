@@ -34,6 +34,7 @@ export type SessionDeps = {
   /** Where handoff texts go (the owner's mobile, or a test voicemail line). Never hard-coded. */
   ownerTextTo: string;
   now?: () => Date;
+  flags?: import("./flow.ts").FlowFlags;
   /** Private reference for this call (e.g. the phone provider's call id). Never shown on screen. */
   ref?: string;
 };
@@ -44,7 +45,7 @@ export type SessionDeps = {
  * back in before the next caller event.
  */
 export class CallSession {
-  private state: FlowState = initialState();
+  private state: FlowState;
   private startedAt: Date;
   private readonly now: () => Date;
   readonly actions: FlowAction[] = [];
@@ -52,6 +53,7 @@ export class CallSession {
 
   constructor(private readonly deps: SessionDeps) {
     this.now = deps.now ?? (() => new Date());
+    this.state = initialState(deps.flags ?? {});
     this.startedAt = this.now();
   }
 

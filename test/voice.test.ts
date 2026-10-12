@@ -65,7 +65,7 @@ class FakeTwilioSocket extends EventEmitter {
   }
 }
 
-const settle = () => new Promise((r) => setTimeout(r, 15));
+const settle = () => new Promise((r) => setTimeout(r, 60));
 
 async function callThroughBridge(
   provider: FakeProvider | VoiceProvider,
@@ -344,7 +344,7 @@ describe("phone line: provider swap", () => {
       await callThroughBridge(pa, script, a);
       await callThroughBridge(pb, script, b);
       assert.deepEqual(pb.said, pa.said, script.name);
-      const strip = (e: any) => ({ ...e, startedAt: 0, endedAt: 0, voiceSeconds: 0 });
+      const strip = (e: any) => ({ ...e, startedAt: 0, endedAt: 0, voiceSeconds: 0, timings: 0 });
       assert.deepEqual(strip(b.list()[0]), strip(a.list()[0]), script.name);
     }
   });
@@ -498,5 +498,74 @@ describe("phone line: turn taking", () => {
     await new Promise((r) => setTimeout(r, 80));
     assert.equal(provider.said[0], LINES.greet);
     ws.close();
+  });
+});
+
+describe("phone line: barge-in flag", () => {
+  it("questions can be talked over: Twilio playback is cleared and the flow carries on", async () => {
+    // A provider that holds the line open until the caller speaks, like a long prompt.
+    let events: VoiceEvents | null = null;
+    const said: Array<{ text: string; interruptible?: boolean }> = [];
+    let release: (() => void) | null = null;
+    const provider: VoiceProvider = {
+      name: "slow",
+      async start(ev) {
+        events = ev;
+        return {
+          sendAudio() {},
+          say(text, o) {
+            said.push({ text, interruptible: o?.interruptible });
+            ev.onAudio(Buffer.alloc(160, 0xff).toString("base64"));
+            return new Promise<void>((r) => (release = r));
+          },
+          async end() {},
+        };
+      },
+    };
+    const ws = new FakeTwilioSocket();
+    const orders = sampleOrderSource();
+    bridgeCall(ws as unknown as WebSocket, {
+      authToken: TOKEN, provider, callLog: openCallLog(), lookup: (o, c) => lookupOrder(orders, o, c),
+      silenceMs: 60_000, joinMs: 5, bargeIn: true, onAfter: () => {},
+    });
+    ws.twilio({ event: "start", start: { callSid: SID, streamSid: "MZ", customParameters: { token: streamToken(TOKEN, SID), caller: "" } } });
+    await settle();
+    assert.equal(said[0]!.interruptible, true, "the greeting asks a question, so it can be talked over");
+    events!.onSpeechStarted!();
+    events!.onInterrupted!();
+    release!();
+    events!.onHeard("one oh four two");
+    await settle();
+    assert.ok(ws.sent.some((m) => m.event === "clear"), "Twilio told to drop queued audio");
+    assert.equal(said.at(-1)!.text, LINES.askContact);
+    ws.close();
+  });
+  it("without the flag nothing is interruptible", async () => {
+    const provider = new FakeProvider();
+    let flag: boolean | undefined;
+    const orig = provider.start.bind(provider);
+    provider.start = async (ev) => {
+      const s = await orig(ev);
+      return { ...s, say: (t: string, o?: { interruptible?: boolean }) => ((flag = o?.interruptible), s.say(t)) };
+    };
+    const ws = new FakeTwilioSocket();
+    bridgeCall(ws as unknown as WebSocket, {
+      authToken: TOKEN, provider, callLog: openCallLog(), lookup: () => ({ match: false, say: "" }),
+      silenceMs: 60_000, onAfter: () => {},
+    });
+    ws.twilio({ event: "start", start: { callSid: SID, streamSid: "MZ", customParameters: { token: streamToken(TOKEN, SID), caller: "" } } });
+    await settle();
+    assert.equal(flag, false);
+    ws.close();
+  });
+  it("records join wait and reply gap timings in the call log (not shown on screen)", async () => {
+    const provider = new FakeProvider();
+    const log = openCallLog();
+    await callThroughBridge(provider, SCRIPTS[0]!, log, SID, { joinMs: 20 });
+    const t = log.list()[0]!.timings!;
+    assert.ok(t.turns >= 2);
+    assert.ok(t.joinWaitMsAvg! >= 15, String(t.joinWaitMsAvg));
+    assert.ok(t.replyMsAvg !== null);
+    assert.doesNotMatch(callLogPage(log.list()), /joinWait|replyMs/);
   });
 });

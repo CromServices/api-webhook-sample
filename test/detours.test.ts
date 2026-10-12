@@ -189,3 +189,34 @@ describe("phone line: never repeats itself", () => {
     assert.ok(LINES.greet.split(/\s+/).length / 2.7 < 4, LINES.greet);
   });
 });
+
+describe("phone line: flags", () => {
+  it("confirmReask: silence after a read-back repeats the yes/no question", async () => {
+    const orders = sampleOrderSource();
+    const said: string[] = [];
+    const s = new CallSession({
+      telephony: { say: (t) => void said.push(t), ringOwner: async () => "no_answer", connectOwner() {}, hangUp() {} },
+      sms: { async send() {} },
+      lookup: (o, c) => lookupOrder(orders, o, c),
+      log: openCallLog(),
+      ownerTextTo: "0491570110",
+      flags: { confirmReask: true },
+    });
+    await s.start("");
+    await s.heard("a thousand and forty-two");
+    await s.silence();
+    assert.equal(said.at(-1), "Is that order one-oh-four-two? Just yes or no.");
+    await s.heard("yes");
+    assert.equal(said.at(-1), LINES.askContact);
+  });
+  it("without the flag, silence after a read-back keeps today's behaviour", async () => {
+    const { said } = await call(["a thousand and forty-two"]);
+    assert.equal(said.at(-1), "Is that order one-oh-four-two?");
+  });
+  it("status and complaint intents", async () => {
+    const a = await call(["Where's my order at?"]);
+    assert.equal(a.said[1], LINES.statusAsk);
+    const b = await call(["You forgot my banana bread"]);
+    assert.ok(b.said.includes(LINES.handoffComplaint));
+  });
+});

@@ -45,6 +45,8 @@ export class XaiVoiceProvider implements VoiceProvider {
     const ws = this.opts.connect ? this.opts.connect(url, headers) : new WebSocket(url, { headers });
 
     let forcedPending = 0;
+    const pendingFlags: boolean[] = [];
+    let current: { id: string; interruptible: boolean } | null = null;
     const ours = new Set<string>();
     const dropped = new Set<string>();
     const waiting: Array<() => void> = [];
@@ -111,6 +113,15 @@ export class XaiVoiceProvider implements VoiceProvider {
             return;
           case "input_audio_buffer.speech_started":
             events.onSpeechStarted?.();
+            // Barge-in: xAI stops an interruptible forced line itself (per its docs); we stop
+            // forwarding its audio and let the flow carry on with what the caller says.
+            if (current && current.interruptible && ours.has(current.id)) {
+              ours.delete(current.id);
+              dropped.add(current.id);
+              current = null;
+              events.onInterrupted?.();
+              waiting.shift()?.();
+            }
             return;
           // "completed" fires many times per caller turn with the transcript so far
           // (live behaviour). The turn is over at input_audio_buffer.committed; the
@@ -134,6 +145,7 @@ export class XaiVoiceProvider implements VoiceProvider {
             if (forcedPending > 0) {
               forcedPending -= 1;
               ours.add(responseId);
+              current = { id: responseId, interruptible: pendingFlags.shift() ?? false };
             } else {
               dropped.add(responseId);
               send({ type: "response.cancel" });
@@ -148,6 +160,7 @@ export class XaiVoiceProvider implements VoiceProvider {
             if (usage) events.onUsage?.({ inputTokens: usage.input_tokens, outputTokens: usage.output_tokens });
             if (responseId && ours.has(responseId)) {
               ours.delete(responseId);
+              if (current?.id === responseId) current = null;
               waiting.shift()?.();
             } else if (responseId) {
               dropped.delete(responseId);
@@ -163,17 +176,18 @@ export class XaiVoiceProvider implements VoiceProvider {
         sendAudio(mulawB64) {
           send({ type: "input_audio_buffer.append", audio: mulawB64 });
         },
-        say(text) {
+        say(text, sayOpts) {
           return new Promise<void>((done) => {
             if (ws.readyState !== WebSocket.OPEN) return done();
             forcedPending += 1;
+            pendingFlags.push(!!sayOpts?.interruptible);
             waiting.push(done);
             send({
               type: "conversation.item.create",
               item: {
                 type: "force_message",
                 role: "assistant",
-                interruptible: false,
+                interruptible: !!sayOpts?.interruptible,
                 content: [{ type: "output_text", text }],
               },
             });

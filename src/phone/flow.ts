@@ -52,6 +52,9 @@ export const LINES = {
   noNumber: `No problem. Tell me the name on the order and the last three digits of your phone number. Or say "message" to leave ${OWNER_NAME} a message.`,
   askNameAgain: "Sorry, I didn't get that. What's the first name on the order, and the last three digits of your phone?",
   offTopic: `Sorry, I can only help with orders on this line, but I can take a message for ${OWNER_NAME}.`,
+  handoffComplaint: `Sorry about that. ${OWNER_NAME} can sort it out, so I'll put you through.`,
+  statusAsk: "Sure, I can check that. What's the order number?",
+  confirmYesNo: (n: string) => `Is that order ${sayDigits(n)}? Just yes or no.`,
   handoffMessage: `No worries, I'll pass you to ${OWNER_NAME}'s voicemail so you can get a call back.`,
 } as const;
 
@@ -68,7 +71,13 @@ export const TOLD = {
   callBack: `${OWNER_NAME} will call back`,
 } as const;
 
-export type HandoffReason = "change" | "person" | "message" | "no_match" | "not_heard";
+export type HandoffReason = "change" | "complaint" | "person" | "message" | "no_match" | "not_heard";
+
+/** Behaviour switches, off by default until tried on a live call. */
+export type FlowFlags = {
+  /** Silence after "Is that order …?" repeats the yes/no question instead of asking for the number again. */
+  confirmReask?: boolean;
+};
 
 export type Phase =
   | "idle"
@@ -96,6 +105,7 @@ export type FlowState = {
   ownerAnswered: boolean | null;
   message: string | null;
   textedOwner: boolean;
+  flags?: FlowFlags;
   /** Last sentence spoken, so it is never said twice in a row. */
   lastSaid?: string;
 };
@@ -144,34 +154,55 @@ export const ACTION_TYPES: readonly FlowAction["type"][] = [
   "log",
 ];
 
-export type Intent = "change" | "person" | "message" | "hours" | "location" | "no_number" | "no" | "yes" | "none";
+export type Intent =
+  | "change"
+  | "complaint"
+  | "person"
+  | "message"
+  | "hours"
+  | "location"
+  | "no_number"
+  | "status"
+  | "no"
+  | "yes"
+  | "none";
 
 const CHANGE =
-  /\b(change|changing|cancel|cancelling|canceling|refund|swap|switch|modify|amend|edit|update|wrong (item|order|thing)|instead|different address|add (a|an|another|one|some)|remove|take off)\b/i;
+  /\b(change|changing|cancel+(ing|ed)?|refund|swap|switch|modify(ing)?|amend|edit|updat(e|ing)|instead|different address|add (a|an|another|one|some)|remove|take off|scrap (that|it|my)|don'?t (need|want) (it|that|the order)|money back)\b/i;
+const COMPLAINT =
+  /\b(wrong|missing|forgot(ten)?|left out|didn'?t (get|receive|come|arrive)|never (got|arrived|came)|hasn'?t (arrived|come)|not (arrived|received|here)|broken|damaged|crushed|incomplete|reimburs\w*|spilt|spilled|stone cold|cold|complain(t)?|problem|issue|not happy|terrible|disgusting|report)\b/i;
 const PERSON =
-  /\b(talk|speak|chat)\b[^.?!]*\b(someone|somebody|person|human|sam|owner|staff|manager|real|anyone)\b|\b(real person|a human|operator|representative|put me through|call me back|talk to sam|speak to sam)\b/i;
+  /\b(talk|speak|chat|yarn)\b[^.?!]*\b(someone|somebody|person|human|sam|owner|staff|manager|real|anyone|boss|agent|service|support)\b|\b(real person|a human|operator|representative|put me (through|onto|on to)|call me back|give me a (bell|call|ring)|talk to sam|speak to sam|is sam (around|there|in)|customer (service|support|care)|client (service|support)|(contact|call|email|reach|ring) (the )?(owner|boss|sam|agent|support|staff|someone)|live agent|human agent|an agent)\b/i;
 const MESSAGE = /\b(leave (a |him |her |them )?(message|voicemail)|voicemail|take a message|message)\b/i;
-const HOURS = /\b(open|opening|close|closing|hours|what time|when do you)\b/i;
-const LOCATION = /\b(where are you|where is the (shop|cafe|café)|address|location|located|directions|find you)\b/i;
+const HOURS = /\b(open|opening|close|closing|shut|hours|what time (do|are|does)|when do you|trading)\b/i;
+const LOCATION =
+  /\b(where are (you|ya|youse)|whereabouts|where('s| is) (the |your )?(shop|cafe|café|store|place)|where (do|can) i (pick|collect|find|get)|pick (it|my order|it all) up from|your address|the address|location|located|directions|find you|(nearest|closest|nearby) (store|shop|cafe)s?|stores? (near|nearby|close|in my area)|(find|search for|looking for) (a |the )?(store|shop)s?)\b/i;
+const STATUS_WHAT = /\b(order|orders|delivery|package|parcel|purchase|food|coffee|brekkie|breakfast|item|items|it|stuff|shipment|replacement|exchange)\b/i;
+const STATUS_ASK =
+  /\b(where|track|tracking|status|eta|how long|when|ready|on (its|the) way|sent|dispatch(ed)?|ship(ped|ping)?|arriv(e|ing|al)|deliver(ed|ing|y)?|coming|here yet|at\??$|check(ing)? (on|up)|update on|progress)\b/i;
 const NO_NUMBER =
-  /\b(don'?t|do not|can'?t|cannot|didn'?t|never) (have|know|remember|find|get|got|see)\b[^.?!]*\b(number|order|receipt|it)\b|\b(lost|forgot|no idea)\b[^.?!]*\b(number|receipt)\b|\bno (order )?number\b/i;
-const NO = /^\s*(no|nope|nah|no thanks|no thank you)\b|\b(that's all|that is all|that's it|nothing else|all good|bye|goodbye)\b/i;
-const YES = /^\s*(yes|yeah|yep|yup|sure|please)\b|\b(another order|check another|one more)\b/i;
+  /\b(don'?t|do not|can'?t|cannot|didn'?t|never) (have|know|remember|find|get|got|see)\b[^.?!]*\b(number|receipt)\b|\b(lost|forgot|no idea)\b[^.?!]*\b(number|receipt)\b|\bno (order )?number\b|\blost (the|my) receipt\b/i;
+const NO =
+  /^\s*(no|nope|nah)\s*[.,!]?\s*$|^\s*(no|nope|nah)\b[ ,]*(thanks|thank you|that's all|that is all|all good|i'm good|cheers|that's it)|\byeah,? nah\b|\b(that's all|that is all|nothing else|bye|goodbye)\b/i;
+const YES = /^\s*(yes|yeah|yep|yup|sure|please(?! \w+ the)|correct|right|exactly|too right|spot on|that's right|that's it|you got it|bang on)\b|\b(another order|check another|one more|that's (right|correct))\b/i;
 
 export function detectIntent(text: string): Intent {
-  if (CHANGE.test(text)) return "change";
-  if (PERSON.test(text)) return "person";
   if (NO_NUMBER.test(text)) return "no_number";
+  if (CHANGE.test(text)) return "change";
+  if (COMPLAINT.test(text)) return "complaint";
+  if (PERSON.test(text)) return "person";
   if (MESSAGE.test(text)) return "message";
   if (LOCATION.test(text)) return "location";
   if (HOURS.test(text)) return "hours";
   if (NO.test(text)) return "no";
+  if (STATUS_ASK.test(text) && STATUS_WHAT.test(text)) return "status";
   if (YES.test(text)) return "yes";
   return "none";
 }
 
-export function initialState(): FlowState {
+export function initialState(flags: FlowFlags = {}): FlowState {
   return {
+    flags,
     phase: "idle",
     caller: "",
     orderNumber: null,
@@ -216,7 +247,9 @@ function handoff(state: FlowState, reason: HandoffReason): { state: FlowState; a
   const line =
     reason === "change"
       ? LINES.handoffChange
-      : reason === "person"
+      : reason === "complaint"
+        ? LINES.handoffComplaint
+        : reason === "person"
         ? LINES.handoffPerson
         : reason === "message"
           ? LINES.handoffMessage
@@ -224,7 +257,7 @@ function handoff(state: FlowState, reason: HandoffReason): { state: FlowState; a
           ? LINES.handoffNoMatch
           : LINES.handoffNotHeard;
   let asked = state.asked;
-  if (reason === "change") asked = addOnce(asked, ASKED.change);
+  if (reason === "change" || reason === "complaint") asked = addOnce(asked, ASKED.change);
   if (reason === "person" || reason === "message") asked = addOnce(asked, ASKED.person);
   if (asked.length === 0) asked = [ASKED.status];
   const told = addOnce(state.told, TOLD.putThrough);
@@ -248,6 +281,8 @@ function ownerText(state: FlowState): string {
       ? "want to change an order"
       : state.handoffReason === "person"
         ? "asked to talk to you"
+        : state.handoffReason === "complaint"
+          ? "have a problem with an order"
         : state.handoffReason === "message"
           ? "wanted to leave a message"
           : state.handoffReason === "no_match"
@@ -324,6 +359,12 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
     case "ask_contact":
     case "told": {
       if (event.type === "silence") {
+        if (state.phase === "confirm_order" && state.flags?.confirmReask && state.orderNumber && state.silences < 1) {
+          return {
+            state: { ...state, silences: state.silences + 1 },
+            actions: [{ type: "say", text: LINES.confirmYesNo(state.orderNumber) }],
+          };
+        }
         // Reprompt once, then offer Sam's voicemail rather than stall or hang up.
         if (state.silences >= 1) return handoff({ ...state, silences: 0 }, "not_heard");
         return {
@@ -365,6 +406,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
 
       const intent = detectIntent(text);
       if (intent === "change") return handoff(heard, "change");
+      if (intent === "complaint") return handoff(heard, "complaint");
       if (intent === "person") return handoff(heard, "person");
       if (intent === "message") return handoff(heard, "message");
       if (intent === "hours") return reprompt(heard, SHOP_INFO.hours);
@@ -400,7 +442,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         if (intent === "no") return finish(heard, LINES.bye);
         const reading = readOrderNumber(text);
         if (reading) return gotNumber(heard, reading);
-        if (intent === "yes") {
+        if (intent === "yes" || intent === "status") {
           return {
             state: { ...heard, phase: "ask_order", orderNumber: null },
             actions: [{ type: "say", text: "Sure. What's the order number?" }],
@@ -412,6 +454,9 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       if (state.phase === "ask_order") {
         const reading = readOrderNumber(text);
         if (reading) return gotNumber(heard, reading);
+        if (intent === "status" && !heard.asked.includes(ASKED.status)) {
+          return { state: { ...heard, asked: addOnce(heard.asked, ASKED.status) }, actions: [{ type: "say", text: LINES.statusAsk }] };
+        }
         if (heard.misses >= MAX_RETRIES) return handoff({ ...heard, misses: 0 }, "not_heard");
         if (heard.misses >= 1) return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: SECOND_TRY.ask_order! }] };
         const wordy = text.trim().split(/\s+/).length > 3;

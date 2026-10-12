@@ -31,6 +31,10 @@ const app = createApp({
       publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
       ownerNumber: process.env.OWNER_NUMBER || undefined,
       transcriptLog: process.env.PHONE_TRANSCRIPT_LOG === "1",
+      // Off until tried on a live call.
+      bargeIn: process.env.PHONE_BARGE_IN === "1",
+      confirmReask: process.env.PHONE_CONFIRM_REASK === "1",
+      joinMs: process.env.PHONE_JOIN_MS ? Number(process.env.PHONE_JOIN_MS) : undefined,
       provider: new XaiVoiceProvider({
         apiKey: process.env.XAI_API_KEY ?? "",
         voice: process.env.XAI_VOICE || undefined,

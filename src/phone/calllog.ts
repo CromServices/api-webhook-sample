@@ -14,6 +14,8 @@ export type CallLogEntry = CallSummary & {
   /** Private recording location (provider URL). Only served through the signed-in page. */
   recordingUrl?: string | null;
   recordingSeconds?: number | null;
+  /** Turn-taking timings for tuning (join wait, reply gap). Not shown. */
+  timings?: { joinWaitMsAvg: number | null; replyMsAvg: number | null; turns: number };
   /** Seconds the voice provider was connected (for spend). Not shown. */
   voiceSeconds?: number;
 };

@@ -38,6 +38,10 @@ export type TwilioOptions = {
   silenceMs?: number;
   /** Test hook: fetch for voicemail audio. */
   fetchImpl?: typeof fetch;
+  /** Flag: let the caller talk over the line when it asks a question. */
+  bargeIn?: boolean;
+  /** Flag: after a read-back, silence repeats the yes/no question. */
+  confirmReask?: boolean;
   /** Join caller speech pieces closer than this (ms). */
   joinMs?: number;
   /** Outbound calls: longest wait for the person's hello before greeting. */
@@ -248,6 +252,12 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   const joinMs = opts.joinMs ?? 900;
   const maxHoldMs = 4000;
   let pending: string[] = [];
+  let lastPieceAt = 0;
+  let heardAt = 0;
+  let awaitingReply = false;
+  const joinWaits: number[] = [];
+  const replyGaps: number[] = [];
+  let speaking = false;
   let joinTimer: NodeJS.Timeout | null = null;
   let holdTimer: NodeJS.Timeout | null = null;
   let waitingForHello = false;
@@ -259,7 +269,11 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     if (!pending.length) return;
     const text = pending.join(" ");
     pending = [];
-    note("caller", text);
+    const waited = Date.now() - lastPieceAt;
+    joinWaits.push(waited);
+    heardAt = Date.now();
+    awaitingReply = true;
+    note("caller", `${text} [join wait ${waited} ms]`);
     void run((s) => s.heard(text));
   };
   const heardPiece = (text: string) => {
@@ -269,6 +283,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
       return;
     }
     pending.push(text);
+    lastPieceAt = Date.now();
     if (joinTimer) clearTimeout(joinTimer);
     joinTimer = setTimeout(flush, joinMs);
     if (!holdTimer) holdTimer = setTimeout(flush, maxHoldMs);
@@ -315,7 +330,13 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     for (const done of marks.values()) done();
     marks.clear();
     const secs = voiceStarted ? Math.round((Date.now() - voiceStarted) / 1000) : 0;
-    if (callSid && secs) opts.callLog.update(callSid, { voiceSeconds: secs });
+    const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+    if (callSid) {
+      opts.callLog.update(callSid, {
+        ...(secs ? { voiceSeconds: secs } : {}),
+        timings: { joinWaitMsAvg: avg(joinWaits), replyMsAvg: avg(replyGaps), turns: joinWaits.length },
+      });
+    }
     void voice?.end();
     closedByUs = true;
     if (ws.readyState === ws.OPEN) ws.close();
@@ -364,10 +385,21 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
                 firstAudio = true;
                 note("line", "(first audio sent to caller)");
               }
+              if (awaitingReply) {
+                awaitingReply = false;
+                replyGaps.push(Date.now() - heardAt);
+                note("line", `(reply audio ${Date.now() - heardAt} ms after the caller's turn was taken)`);
+              }
               sendTwilio({ event: "media", streamSid, media: { payload: b64 } });
             },
             onHeard(text) {
               heardPiece(text);
+            },
+            onInterrupted() {
+              note("caller", "(talked over the line: playback cleared)");
+              sendTwilio({ event: "clear", streamSid });
+              for (const done of marks.values()) done();
+              marks.clear();
             },
             onSpeechStarted() {
               clearSilence();
@@ -397,8 +429,12 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
             say: async (text) => {
               bytes = 0;
               note("line", text);
-              await voice!.say(text);
+              // Barge-in (flag): only questions can be talked over, so answers and handovers always play.
+              const interruptible = !!opts.bargeIn && /\?\s*$/.test(text);
+              speaking = true;
+              await voice!.say(text, { interruptible });
               await playMark(bytes);
+              speaking = false;
             },
             ringOwner: async () => {
               opts.onAfter(callSid, "handover");
@@ -420,6 +456,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           ownerTextTo: opts.ownerTextTo ?? "",
           lookup: (o, c) => opts.lookup(o, c, callSid),
           lookupByName: opts.lookupByName,
+          flags: { confirmReask: !!opts.confirmReask },
           log: opts.callLog,
         });
         const caller = String(params.caller ?? "");
