@@ -1,4 +1,4 @@
-import { normaliseContact, normaliseOrderNumber } from "./normalise.ts";
+import { normaliseContact, normaliseOrderNumber, spokenDigits } from "./normalise.ts";
 import { STATUS_WORDS, contactMatches, type OrderSource, type OrderStatus } from "./orders.ts";
 
 /** The only two shapes the phone line ever gets back. */
@@ -23,6 +23,22 @@ export function lookupOrder(source: OrderSource, orderInput: unknown, contactInp
   if (!number || !contact) return NO_MATCH;
   const order = source.find(number);
   if (!order || !contactMatches(order, contact)) return NO_MATCH;
+  return { match: true, status: order.status, say: STATUS_WORDS[order.status].said };
+}
+
+/**
+ * No order number: the caller gives their first name and the last 3 digits of
+ * the phone on the order. Exactly one order must match both, else NO_MATCH.
+ */
+export function lookupByName(source: OrderSource, text: unknown): LookupResult {
+  if (typeof text !== "string" || text.length > 200 || !source.all) return NO_MATCH;
+  const digits = spokenDigits(text);
+  if (digits.length < 3) return NO_MATCH;
+  const last3 = digits.slice(-3);
+  const words = new Set(text.toLowerCase().match(/[a-z]+/g) ?? []);
+  const hits = source.all().filter((o) => o.name && words.has(o.name.toLowerCase()) && o.phone.endsWith(last3));
+  if (hits.length !== 1) return NO_MATCH;
+  const order = hits[0]!;
   return { match: true, status: order.status, say: STATUS_WORDS[order.status].said };
 }
 

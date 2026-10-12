@@ -27,6 +27,8 @@ export const STATUS_WORDS: Record<OrderStatus, { said: string; short: string }> 
 export type PhoneOrder = {
   number: string;
   item: string;
+  /** First name only, for "I don't have the number" lookups. */
+  name?: string;
   phone: string;
   email: string;
   status: OrderStatus;
@@ -35,6 +37,8 @@ export type PhoneOrder = {
 /** Read-only view of a shop's orders. A real shop swaps in its own (Wix, Woo) here. */
 export type OrderSource = {
   find(number: string): Readonly<PhoneOrder> | undefined;
+  /** Optional: every order, for name + last-3-digits lookups. */
+  all?(): readonly Readonly<PhoneOrder>[];
 };
 
 /**
@@ -44,12 +48,12 @@ export type OrderSource = {
  * (08) 5550 xxxx), and emails are on example.com, so none reach a real person.
  */
 export const SAMPLE_ORDERS: readonly PhoneOrder[] = Object.freeze([
-  { number: "1041", item: "Flat white", phone: "0491570006", email: "jess.t@example.com", status: "delivered" },
-  { number: "1042", item: "Long black", phone: "0491570156", email: "Ari.K@Example.com", status: "on_its_way" },
-  { number: "1043", item: "Banana bread", phone: "0855501234", email: "mel.r@example.com", status: "being_made" },
-  { number: "1045", item: "Flat white and banana bread", phone: "0491570157", email: "dom.p@example.com", status: "ready_to_collect" },
-  { number: "1046", item: "Two long blacks", phone: "0491570158", email: "lee.w@example.com", status: "received" },
-  { number: "1047", item: "Banana bread", phone: "0491570159", email: "kim.n@example.com", status: "on_hold" },
+  { number: "1041", name: "Jess", item: "Flat white", phone: "0491570006", email: "jess.t@example.com", status: "delivered" },
+  { number: "1042", name: "Ari", item: "Long black", phone: "0491570156", email: "Ari.K@Example.com", status: "on_its_way" },
+  { number: "1043", name: "Mel", item: "Banana bread", phone: "0855501234", email: "mel.r@example.com", status: "being_made" },
+  { number: "1045", name: "Dom", item: "Flat white and banana bread", phone: "0491570157", email: "dom.p@example.com", status: "ready_to_collect" },
+  { number: "1046", name: "Lee", item: "Two long blacks", phone: "0491570158", email: "lee.w@example.com", status: "received" },
+  { number: "1047", name: "Kim", item: "Banana bread", phone: "0491570159", email: "kim.n@example.com", status: "on_hold" },
 ].map((row) => Object.freeze({ ...row })) as PhoneOrder[]);
 
 export function sampleOrderSource(rows: readonly PhoneOrder[] = SAMPLE_ORDERS): OrderSource {
@@ -57,6 +61,9 @@ export function sampleOrderSource(rows: readonly PhoneOrder[] = SAMPLE_ORDERS): 
   return {
     find(number) {
       return byNumber.get(number);
+    },
+    all() {
+      return rows;
     },
   };
 }

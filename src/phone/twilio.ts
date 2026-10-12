@@ -31,6 +31,7 @@ export type TwilioOptions = {
   provider: VoiceProvider;
   callLog: CallLog;
   lookup: (orderNumber: string, contact: string, who: string) => Promise<LookupResult> | LookupResult;
+  lookupByName?: (text: string) => Promise<LookupResult> | LookupResult;
   sms?: TextSender;
   ownerTextTo?: string;
   /** Silence before the flow is nudged. */
@@ -109,7 +110,9 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
   app.post("/phone/voice", (req, res) => {
     if (!signed(req, res)) return;
     const callSid = String(req.body.CallSid ?? "");
-    const from = String(req.body.From ?? "");
+    // On a call the line places (outbound), the customer is the one called.
+    const outbound = String(req.body.Direction ?? "").startsWith("outbound");
+    const from = String((outbound ? req.body.To : req.body.From) ?? "");
     const wsUrl = base.replace(/^http/, "ws") + "/phone/stream";
     twiml(
       res,
@@ -368,6 +371,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           sms: opts.sms ?? TEXTS_NOT_SET_UP,
           ownerTextTo: opts.ownerTextTo ?? "",
           lookup: (o, c) => opts.lookup(o, c, callSid),
+          lookupByName: opts.lookupByName,
           log: opts.callLog,
         });
         const caller = String(params.caller ?? "");

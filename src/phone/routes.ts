@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import type { Express, Request, Response } from "express";
 import { openCallLog, type CallLog } from "./calllog.ts";
-import { createRateLimiter, lookupOrder, NO_MATCH_SAY } from "./lookup.ts";
+import { createRateLimiter, lookupByName, lookupOrder, NO_MATCH_SAY } from "./lookup.ts";
 import { normaliseOrderNumber } from "./normalise.ts";
 import { sampleOrderSource, type OrderSource } from "./orders.ts";
 import { callLogPage } from "./page.ts";
@@ -24,7 +24,7 @@ export type PhoneLineOptions = {
   failWindowMs?: number;
   now?: () => number;
   /** Twilio voice side. Omit to leave /phone/voice etc. unmounted. */
-  twilio?: Omit<TwilioOptions, "callLog" | "lookup">;
+  twilio?: Omit<TwilioOptions, "callLog" | "lookup" | "lookupByName">;
 };
 
 function same(a: string, b: string): boolean {
@@ -87,6 +87,7 @@ export function mountPhoneLine(
           const r = limitedLookup(o, c, "phone");
           return r === "slow" ? { match: false, say: NO_MATCH_SAY } : r;
         },
+        lookupByName: (text) => (perLine.take("phone") ? lookupByName(orders, text) : { match: false, say: NO_MATCH_SAY }),
       })
     : null;
 

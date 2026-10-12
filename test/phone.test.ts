@@ -288,7 +288,7 @@ describe("phone line: call flow (scripted calls, mock phone and texts)", () => {
     const [entry] = log.list();
     assert.equal(entry!.handedOver, true);
     assert.equal(entry!.ownerAnswered, false);
-    assert.deepEqual(entry!.told, [TOLD.noMatch, TOLD.callBack]);
+    assert.deepEqual(entry!.told, [TOLD.noMatch, TOLD.putThrough, TOLD.callBack]);
   });
 
   it("change request: never changes anything, puts the caller through to Sam", async () => {
@@ -339,19 +339,21 @@ describe("phone line: call flow (scripted calls, mock phone and texts)", () => {
     assert.equal(log.list()[0]!.textedOwner, true);
   });
 
-  it("two silences end the call politely and still log it", async () => {
+  it("silence: reprompts once, then offers Sam (voicemail) instead of stalling", async () => {
     const log = openCallLog();
     const ran = await runScript(
-      { name: "quiet", caller: "", owner: "answered", seconds: 15, turns: [{ silence: true }, { silence: true }] },
+      { name: "quiet", caller: "", owner: "no_answer", seconds: 15, turns: [{ silence: true }, { silence: true }] },
       { log },
     );
-    assert.equal(ran.said.at(-1), LINES.bye);
+    assert.match(ran.said[1]!, /Are you still there\?/);
+    assert.ok(ran.said.includes(LINES.handoffNotHeard));
+    assert.equal(ran.rang, 1);
     assert.equal(log.list().length, 1);
   });
 
   it("can only ever say, look up, ring, connect, text, hang up and log: no order changes exist", async () => {
     const allowed = new Set(ACTION_TYPES);
-    assert.deepEqual([...allowed].sort(), ["connect_owner", "hang_up", "log", "lookup", "ring_owner", "say", "text_owner"]);
+    assert.deepEqual([...allowed].sort(), ["connect_owner", "hang_up", "log", "lookup", "lookup_by_name", "ring_owner", "say", "text_owner"]);
     for (const s of SCRIPTS) {
       const ran = await runScript(s);
       for (const action of ran.session.actions) assert.ok(allowed.has(action.type), action.type);

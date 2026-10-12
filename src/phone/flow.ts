@@ -1,4 +1,5 @@
-import { normaliseContact, normaliseOrderNumber } from "./normalise.ts";
+import { normaliseContact, normaliseOrderNumber, readOrderNumber, sayDigits, spokenDigits } from "./normalise.ts";
+import { SHOP_INFO } from "./shopinfo.ts";
 import type { LookupResult } from "./lookup.ts";
 import { NO_MATCH_SAY } from "./lookup.ts";
 import { STATUS_WORDS } from "./orders.ts";
@@ -33,6 +34,12 @@ export const LINES = {
   bye: `Thanks for calling ${SHOP_NAME}. Bye for now.`,
   stillThere: "Are you still there?",
   noMessage: `I didn't hear a message, but I've let ${OWNER_NAME} know you called. Bye for now.`,
+  confirmOrder: (n: string) => `Is that order ${sayDigits(n)}?`,
+  confirmAgain: "Sorry, what's the order number? You can say it one digit at a time.",
+  noNumber: `No problem. Tell me the name on the order and the last three digits of your phone number. Or say "message" to leave ${OWNER_NAME} a message.`,
+  askNameAgain: "Sorry, I didn't get that. What's the first name on the order, and the last three digits of your phone?",
+  offTopic: `Sorry, I can only help with orders on this line, but I can take a message for ${OWNER_NAME}.`,
+  handoffMessage: `No worries, I'll pass you to ${OWNER_NAME}'s voicemail so you can get a call back.`,
 } as const;
 
 /** Plain words for the call log. */
@@ -48,11 +55,13 @@ export const TOLD = {
   callBack: `${OWNER_NAME} will call back`,
 } as const;
 
-export type HandoffReason = "change" | "person" | "no_match" | "not_heard";
+export type HandoffReason = "change" | "person" | "message" | "no_match" | "not_heard";
 
 export type Phase =
   | "idle"
   | "ask_order"
+  | "confirm_order"
+  | "ask_name"
   | "ask_contact"
   | "looking_up"
   | "told"
@@ -100,6 +109,8 @@ export type CallSummary = {
 export type FlowAction =
   | { type: "say"; text: string }
   | { type: "lookup"; orderNumber: string; contact: string }
+  /** Caller has no order number: find one order by first name + last 3 phone digits (read-only). */
+  | { type: "lookup_by_name"; text: string }
   | { type: "ring_owner" }
   | { type: "connect_owner" }
   | { type: "text_owner"; body: string }
@@ -110,6 +121,7 @@ export type FlowAction =
 export const ACTION_TYPES: readonly FlowAction["type"][] = [
   "say",
   "lookup",
+  "lookup_by_name",
   "ring_owner",
   "connect_owner",
   "text_owner",
@@ -117,18 +129,27 @@ export const ACTION_TYPES: readonly FlowAction["type"][] = [
   "log",
 ];
 
-export type Intent = "change" | "person" | "no" | "yes" | "none";
+export type Intent = "change" | "person" | "message" | "hours" | "location" | "no_number" | "no" | "yes" | "none";
 
 const CHANGE =
   /\b(change|changing|cancel|cancelling|canceling|refund|swap|switch|modify|amend|edit|update|wrong (item|order|thing)|instead|different address|add (a|an|another|one|some)|remove|take off)\b/i;
 const PERSON =
   /\b(talk|speak|chat)\b[^.?!]*\b(someone|somebody|person|human|sam|owner|staff|manager|real|anyone)\b|\b(real person|a human|operator|representative|put me through|call me back|talk to sam|speak to sam)\b/i;
+const MESSAGE = /\b(leave (a |him |her |them )?(message|voicemail)|voicemail|take a message|message)\b/i;
+const HOURS = /\b(open|opening|close|closing|hours|what time|when do you)\b/i;
+const LOCATION = /\b(where are you|where is the (shop|cafe|café)|address|location|located|directions|find you)\b/i;
+const NO_NUMBER =
+  /\b(don'?t|do not|can'?t|cannot|didn'?t|never) (have|know|remember|find|get|got|see)\b[^.?!]*\b(number|order|receipt|it)\b|\b(lost|forgot|no idea)\b[^.?!]*\b(number|receipt)\b|\bno (order )?number\b/i;
 const NO = /^\s*(no|nope|nah|no thanks|no thank you)\b|\b(that's all|that is all|that's it|nothing else|all good|bye|goodbye)\b/i;
 const YES = /^\s*(yes|yeah|yep|yup|sure|please)\b|\b(another order|check another|one more)\b/i;
 
 export function detectIntent(text: string): Intent {
   if (CHANGE.test(text)) return "change";
   if (PERSON.test(text)) return "person";
+  if (NO_NUMBER.test(text)) return "no_number";
+  if (MESSAGE.test(text)) return "message";
+  if (LOCATION.test(text)) return "location";
+  if (HOURS.test(text)) return "hours";
   if (NO.test(text)) return "no";
   if (YES.test(text)) return "yes";
   return "none";
@@ -182,15 +203,18 @@ function handoff(state: FlowState, reason: HandoffReason): { state: FlowState; a
       ? LINES.handoffChange
       : reason === "person"
         ? LINES.handoffPerson
-        : reason === "no_match"
+        : reason === "message"
+          ? LINES.handoffMessage
+          : reason === "no_match"
           ? LINES.handoffNoMatch
           : LINES.handoffNotHeard;
   let asked = state.asked;
   if (reason === "change") asked = addOnce(asked, ASKED.change);
-  if (reason === "person") asked = addOnce(asked, ASKED.person);
+  if (reason === "person" || reason === "message") asked = addOnce(asked, ASKED.person);
   if (asked.length === 0) asked = [ASKED.status];
+  const told = addOnce(state.told, TOLD.putThrough);
   return {
-    state: { ...state, phase: "ringing_owner", handedOver: true, handoffReason: reason, asked, silences: 0 },
+    state: { ...state, phase: "ringing_owner", handedOver: true, handoffReason: reason, asked, told, silences: 0 },
     actions: [{ type: "say", text: line }, { type: "ring_owner" }],
   };
 }
@@ -209,7 +233,9 @@ function ownerText(state: FlowState): string {
       ? "want to change an order"
       : state.handoffReason === "person"
         ? "asked to talk to you"
-        : state.handoffReason === "no_match"
+        : state.handoffReason === "message"
+          ? "wanted to leave a message"
+          : state.handoffReason === "no_match"
           ? "asked about an order, but the details didn't match"
           : "called, but the line was hard to hear";
   const who = state.caller ? `Missed call from ${spaced(state.caller)}` : "Missed call (no caller number)";
@@ -220,9 +246,20 @@ function ownerText(state: FlowState): string {
 
 const REPROMPT: Partial<Record<Phase, string>> = {
   ask_order: LINES.askOrderAgain,
+  confirm_order: LINES.confirmAgain,
+  ask_name: LINES.askNameAgain,
   ask_contact: LINES.askContactAgain,
   told: LINES.anythingElse,
 };
+
+/** A number heard: read it back first if it could have been misheard, else go on. */
+function gotNumber(state: FlowState, reading: { number: string; sure: boolean }) {
+  const next = { ...state, orderNumber: reading.number, misses: 0, asked: addOnce(state.asked, ASKED.status) };
+  if (!reading.sure) {
+    return { state: { ...next, phase: "confirm_order" as const }, actions: [{ type: "say" as const, text: LINES.confirmOrder(reading.number) }] };
+  }
+  return { state: { ...next, phase: "ask_contact" as const }, actions: [{ type: "say" as const, text: LINES.askContact }] };
+}
 
 export function step(state: FlowState, event: FlowEvent): { state: FlowState; actions: FlowAction[] } {
   if (state.phase === "done") return { state, actions: [] };
@@ -250,10 +287,13 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
     }
 
     case "ask_order":
+    case "confirm_order":
+    case "ask_name":
     case "ask_contact":
     case "told": {
       if (event.type === "silence") {
-        if (state.silences >= 1) return finish(state, LINES.bye);
+        // Reprompt once, then offer Sam's voicemail rather than stall or hang up.
+        if (state.silences >= 1) return handoff({ ...state, silences: 0 }, "not_heard");
         return {
           state: { ...state, silences: state.silences + 1 },
           actions: [{ type: "say", text: `${LINES.stillThere} ${REPROMPT[state.phase] ?? ""}`.trim() }],
@@ -262,7 +302,15 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
       if (event.type !== "heard") return { state, actions: [] };
       const heard = { ...state, silences: 0 };
       const text = event.text;
+      const reprompt = (st: FlowState, first: string) => ({
+        state: st,
+        actions: [{ type: "say" as const, text: `${first} ${state.phase === "told" ? LINES.anythingElse : REPROMPT[state.phase] ?? ""}`.trim() }],
+      });
+      // One miss gets a short answer and the question again; the second offers Sam.
+      const miss = (first: string) =>
+        heard.misses >= 1 ? handoff({ ...heard, misses: 0 }, "not_heard") : reprompt({ ...heard, misses: heard.misses + 1 }, first);
 
+      // Answers that win in any phase, said any way (free-form, not a fixed path).
       if (state.phase === "ask_contact") {
         const contact = normaliseContact(text);
         if (contact && state.orderNumber) {
@@ -272,21 +320,51 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
           };
         }
       }
+      if (state.phase === "ask_name" && spokenDigits(text).length >= 3 && /[a-z]{2,}/i.test(text)) {
+        return {
+          state: { ...heard, phase: "looking_up", misses: 0, asked: addOnce(heard.asked, ASKED.status) },
+          actions: [{ type: "lookup_by_name", text }],
+        };
+      }
 
       const intent = detectIntent(text);
       if (intent === "change") return handoff(heard, "change");
       if (intent === "person") return handoff(heard, "person");
+      if (intent === "message") return handoff(heard, "message");
+      if (intent === "hours") return reprompt(heard, SHOP_INFO.hours);
+      if (intent === "location") return reprompt(heard, SHOP_INFO.where);
+      if (intent === "no_number" && state.phase !== "ask_contact") {
+        return {
+          state: { ...heard, phase: "ask_name", misses: 0, orderNumber: null, asked: addOnce(heard.asked, ASKED.status) },
+          actions: [{ type: "say", text: LINES.noNumber }],
+        };
+      }
+
+      if (state.phase === "confirm_order") {
+        const again = readOrderNumber(text);
+        if (again && again.number !== state.orderNumber) {
+          return {
+            state: { ...heard, orderNumber: again.number },
+            actions: [{ type: "say", text: LINES.confirmOrder(again.number) }],
+          };
+        }
+        if (intent === "yes" || (again && again.number === state.orderNumber) || /\b(correct|right|that's it|yes)\b/i.test(text)) {
+          return {
+            state: { ...heard, phase: "ask_contact", misses: 0 },
+            actions: [{ type: "say", text: LINES.askContact }],
+          };
+        }
+        if (intent === "no") {
+          return { state: { ...heard, phase: "ask_order", orderNumber: null }, actions: [{ type: "say", text: LINES.confirmAgain }] };
+        }
+        return miss("Sorry,");
+      }
 
       if (state.phase === "told") {
         if (intent === "no") return finish(heard, LINES.bye);
-        if (intent === "yes" || normaliseOrderNumber(text)) {
-          const number = normaliseOrderNumber(text);
-          if (number) {
-            return {
-              state: { ...heard, phase: "ask_contact", orderNumber: number, asked: addOnce(heard.asked, ASKED.status) },
-              actions: [{ type: "say", text: LINES.askContact }],
-            };
-          }
+        const reading = readOrderNumber(text);
+        if (reading) return gotNumber(heard, reading);
+        if (intent === "yes") {
           return {
             state: { ...heard, phase: "ask_order", orderNumber: null },
             actions: [{ type: "say", text: "Sure. What's the order number?" }],
@@ -296,16 +374,17 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
       }
 
       if (state.phase === "ask_order") {
-        const number = normaliseOrderNumber(text);
-        if (number) {
-          return {
-            state: { ...heard, phase: "ask_contact", orderNumber: number, misses: 0, asked: addOnce(heard.asked, ASKED.status) },
-            actions: [{ type: "say", text: LINES.askContact }],
-          };
-        }
+        const reading = readOrderNumber(text);
+        if (reading) return gotNumber(heard, reading);
         if (heard.misses >= 1) return handoff({ ...heard, misses: 0 }, "not_heard");
-        return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: LINES.askOrderAgain }] };
+        const wordy = text.trim().split(/\s+/).length > 3;
+        return {
+          state: { ...heard, misses: heard.misses + 1 },
+          actions: [{ type: "say", text: wordy ? `${LINES.offTopic} ${LINES.askOrderAgain}` : LINES.askOrderAgain }],
+        };
       }
+
+      if (state.phase === "ask_name") return miss("");
 
       // ask_contact, but what we heard wasn't a phone number or email
       if (heard.misses >= 1) return handoff({ ...heard, misses: 0 }, "not_heard");
