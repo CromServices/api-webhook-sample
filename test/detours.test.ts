@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES, TOLD, detectIntent } from "../src/phone/flow.ts";
+import { LINES, MAX_RETRIES, TOLD, detectIntent } from "../src/phone/flow.ts";
 import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
 import { readOrderNumber, sayDigits } from "../src/phone/normalise.ts";
 import { sampleOrderSource } from "../src/phone/orders.ts";
@@ -129,7 +129,7 @@ describe("phone line: detours", () => {
     assert.equal(rang, 1);
   });
   it("off-topic: brief answer and the question again, then offers Sam", async () => {
-    const { said, rang } = await call(["Do you sell gift cards for birthdays?", "What about catering for a party?"]);
+    const { said, rang } = await call(["Do you sell gift cards for birthdays?", "What about catering for a party?", "And do you have parking out the front?"]);
     assert.ok(said[1]!.startsWith(LINES.offTopic));
     assert.ok(said.includes(LINES.handoffNotHeard));
     assert.equal(rang, 1);
@@ -152,5 +152,40 @@ describe("phone line: Nate's check call, replayed", () => {
     const { said } = await call(["A thousand and forty-two is my number."]);
     assert.notEqual(said[1], LINES.askOrderAgain);
     assert.equal(said[1], "Is that order one-oh-four-two?");
+  });
+});
+
+describe("phone line: never repeats itself", () => {
+  const noRepeats = (said: string[]) => {
+    for (let i = 1; i < said.length; i += 1) assert.notEqual(said[i], said[i - 1], `repeated: ${said[i]}`);
+  };
+  it("misheard order numbers: two different re-prompts, then voicemail", async () => {
+    const { said, rang } = await call(["blah", "mumble", "hmm what"]);
+    assert.equal(MAX_RETRIES, 2);
+    noRepeats(said);
+    assert.notEqual(said[1], said[2]);
+    assert.ok(said.includes(LINES.handoffNotHeard));
+    assert.equal(rang, 1);
+  });
+  it("misheard contact: two different re-prompts, then voicemail", async () => {
+    const { said, rang } = await call(["1042", "um", "er", "no idea"]);
+    noRepeats(said);
+    assert.equal(rang, 1);
+  });
+  it("call 2 replay (Nate, 12 Oct): no sentence said twice in a row, and the number is understood", async () => {
+    const { said } = await call([
+      "Account number 42",
+      "A thousand and forty-two",
+      "I said yes it was, one thousand and forty-two.",
+      "0 4 triple 3",
+      "0 4 triple 3 4 7 1 double 9",
+      "Zero",
+    ]);
+    noRepeats(said);
+    assert.ok(said.includes("Is that order one-oh-four-two?"));
+    assert.ok(said.includes(LINES.askContact));
+  });
+  it("greeting is short (under 4 s at a normal pace of ~2.7 words/s)", () => {
+    assert.ok(LINES.greet.split(/\s+/).length / 2.7 < 4, LINES.greet);
   });
 });

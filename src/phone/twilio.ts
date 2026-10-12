@@ -38,6 +38,10 @@ export type TwilioOptions = {
   silenceMs?: number;
   /** Test hook: fetch for voicemail audio. */
   fetchImpl?: typeof fetch;
+  /** Join caller speech pieces closer than this (ms). */
+  joinMs?: number;
+  /** Outbound calls: longest wait for the person's hello before greeting. */
+  helloWaitMs?: number;
   /** Print a timed transcript to the server log (test calls only). */
   transcriptLog?: boolean;
 };
@@ -73,6 +77,7 @@ const twiml = (res: Response, body: string) =>
   res.status(200).type("text/xml").send(`<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`);
 
 const VOICE = 'voice="Polly.Olivia-Neural" language="en-AU"';
+export const VOICEMAIL_PROMPT = `${OWNER_NAME} can't come to the phone. Please leave a message after the tone.`;
 
 /** How each call left the stream: decides what /phone/after does. */
 type After = "handover" | "hangup";
@@ -97,9 +102,10 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
     return true;
   }
 
-  const voicemail = (callSid: string) => {
+  const voicemail = (callSid: string, spoken = false) => {
     return (
-      `<Say ${VOICE}>${xml(`${OWNER_NAME} can't come to the phone. Please leave a message after the tone, then hang up.`)}</Say>` +
+      // With no owner phone, the line already said this in its own voice before the stream closed.
+      (spoken ? "" : `<Say ${VOICE}>${xml(VOICEMAIL_PROMPT)}</Say>`) +
       `<Record maxLength="120" timeout="5" playBeep="true" action="${xml(`${base}/phone/recorded`)}" method="POST"` +
       ` recordingStatusCallback="${xml(`${base}/phone/recording`)}" recordingStatusCallbackMethod="POST"` +
       ` recordingStatusCallbackEvent="completed"/>` +
@@ -119,6 +125,7 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
       `<Connect><Stream url="${xml(wsUrl)}">` +
         `<Parameter name="token" value="${streamToken(token, callSid)}"/>` +
         `<Parameter name="caller" value="${xml(from)}"/>` +
+        `<Parameter name="direction" value="${outbound ? "outbound" : "inbound"}"/>` +
         `</Stream></Connect>` +
         `<Redirect method="POST">${xml(`${base}/phone/after`)}</Redirect>`,
     );
@@ -136,7 +143,7 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
         `<Dial timeout="${opts.ringSeconds ?? 20}" action="${xml(`${base}/phone/dialled`)}" method="POST">${xml(opts.ownerNumber)}</Dial>`,
       );
     }
-    twiml(res, voicemail(callSid));
+    twiml(res, voicemail(callSid, true));
   });
 
   app.post("/phone/dialled", (req, res) => {
@@ -236,6 +243,36 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let chain: Promise<void> = Promise.resolve();
   let voiceStarted = 0;
   const silenceMs = opts.silenceMs ?? 8000;
+  // xAI ends a turn at a short pause, which splits "oh four... triple three" into pieces.
+  // Hold each piece briefly and join it with the next if the caller keeps talking.
+  const joinMs = opts.joinMs ?? 900;
+  const maxHoldMs = 4000;
+  let pending: string[] = [];
+  let joinTimer: NodeJS.Timeout | null = null;
+  let holdTimer: NodeJS.Timeout | null = null;
+  let waitingForHello = false;
+  let startFlow: (() => void) | null = null;
+  const flush = () => {
+    if (joinTimer) clearTimeout(joinTimer);
+    if (holdTimer) clearTimeout(holdTimer);
+    joinTimer = holdTimer = null;
+    if (!pending.length) return;
+    const text = pending.join(" ");
+    pending = [];
+    note("caller", text);
+    void run((s) => s.heard(text));
+  };
+  const heardPiece = (text: string) => {
+    if (waitingForHello) {
+      note("caller", `${text} (hello, before the greeting)`);
+      startFlow?.();
+      return;
+    }
+    pending.push(text);
+    if (joinTimer) clearTimeout(joinTimer);
+    joinTimer = setTimeout(flush, joinMs);
+    if (!holdTimer) holdTimer = setTimeout(flush, maxHoldMs);
+  };
   // Off by default. PHONE_TRANSCRIPT_LOG=1 prints a timed transcript for test calls only.
   const trace = opts.transcriptLog ?? false;
   let t0 = 0;
@@ -330,11 +367,15 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
               sendTwilio({ event: "media", streamSid, media: { payload: b64 } });
             },
             onHeard(text) {
-              note("caller", text);
-              void run((s) => s.heard(text));
+              heardPiece(text);
             },
             onSpeechStarted() {
               clearSilence();
+              // Still talking: wait for the rest before answering.
+              if (joinTimer) {
+                clearTimeout(joinTimer);
+                joinTimer = null;
+              }
             },
             onError(m) {
               console.error("phone line: voice error", m);
@@ -361,6 +402,13 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
             },
             ringOwner: async () => {
               opts.onAfter(callSid, "handover");
+              // No owner phone: straight to voicemail, so say the prompt in the line's own voice.
+              if (!opts.ownerNumber) {
+                bytes = 0;
+                note("line", VOICEMAIL_PROMPT);
+                await voice!.say(VOICEMAIL_PROMPT);
+                await playMark(bytes);
+              }
               return "handed_to_phone";
             },
             connectOwner: async () => {},
@@ -375,7 +423,18 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           log: opts.callLog,
         });
         const caller = String(params.caller ?? "");
-        void run((s) => s.start(normaliseAuPhone(caller) ?? caller));
+        const begin = () => {
+          if (startFlow === null) return;
+          startFlow = null;
+          waitingForHello = false;
+          void run((s) => s.start(normaliseAuPhone(caller) ?? caller));
+        };
+        startFlow = begin;
+        if (params.direction === "outbound") {
+          // A call the line places: let the person say hello first (or 4 s of quiet).
+          waitingForHello = true;
+          setTimeout(begin, opts.helloWaitMs ?? 4000);
+        } else begin();
         return;
       }
       case "media":

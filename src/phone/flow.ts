@@ -16,11 +16,24 @@ import { STATUS_WORDS } from "./orders.ts";
 export const OWNER_NAME = "Sam";
 export const SHOP_NAME = "Sam's Café";
 
+/** Tries per question before offering Sam's voicemail. */
+export const MAX_RETRIES = 2;
+
+/** Second-try wording, so the line never says the same sentence twice in a row. */
+export const SECOND_TRY: Record<string, string> = {
+  ask_order: "Could you say the order number one digit at a time? Like one, oh, four, two.",
+  ask_contact: "Try the mobile number one digit at a time, or spell out the email.",
+  ask_name: "Just your first name, then the last three digits of your phone, please.",
+  confirm_order: "Was that the right order number? Yes or no is fine.",
+  told: "Anything else? You can check another order or ask for Sam.",
+};
+
 export const LINES = {
-  greet: `Hi, you've reached ${SHOP_NAME}. I can tell you where your order is. What's your order number? You can also say "talk to ${OWNER_NAME}" at any time.`,
-  askOrderAgain: "Sorry, I didn't catch that. What's the order number?",
+  // Under 4 seconds spoken. Detours (Sam, hours, no number) work without being listed.
+  greet: `Hi, it's ${SHOP_NAME}. What's your order number?`,
+  askOrderAgain: "Sorry, I missed that. What's the order number?",
   askContact: "Thanks. And what's the mobile number or email on the order?",
-  askContactAgain: "Sorry, I didn't catch that. What's the mobile number or email you used for the order?",
+  askContactAgain: "Sorry, I missed that. What's the mobile or email on the order?",
   tryAgain: `${NO_MATCH_SAY} Let's try once more. What's the order number?`,
   anythingElse: "Is there anything else I can help with?",
   offer: `I can check another order, or put you through to ${OWNER_NAME}. Which would you like?`,
@@ -35,7 +48,7 @@ export const LINES = {
   stillThere: "Are you still there?",
   noMessage: `I didn't hear a message, but I've let ${OWNER_NAME} know you called. Bye for now.`,
   confirmOrder: (n: string) => `Is that order ${sayDigits(n)}?`,
-  confirmAgain: "Sorry, what's the order number? You can say it one digit at a time.",
+  confirmAgain: "Okay. What's the order number? One digit at a time is easiest.",
   noNumber: `No problem. Tell me the name on the order and the last three digits of your phone number. Or say "message" to leave ${OWNER_NAME} a message.`,
   askNameAgain: "Sorry, I didn't get that. What's the first name on the order, and the last three digits of your phone?",
   offTopic: `Sorry, I can only help with orders on this line, but I can take a message for ${OWNER_NAME}.`,
@@ -83,6 +96,8 @@ export type FlowState = {
   ownerAnswered: boolean | null;
   message: string | null;
   textedOwner: boolean;
+  /** Last sentence spoken, so it is never said twice in a row. */
+  lastSaid?: string;
 };
 
 export type FlowEvent =
@@ -261,7 +276,24 @@ function gotNumber(state: FlowState, reading: { number: string; sure: boolean })
   return { state: { ...next, phase: "ask_contact" as const }, actions: [{ type: "say" as const, text: LINES.askContact }] };
 }
 
+/** Backstop: if a line would repeat the one just said, say it differently. */
 export function step(state: FlowState, event: FlowEvent): { state: FlowState; actions: FlowAction[] } {
+  const out = stepInner(state, event);
+  let last = state.lastSaid ?? "";
+  const actions = out.actions.map((a) => {
+    if (a.type !== "say") return a;
+    let text = a.text;
+    if (text === last) {
+      const alt = SECOND_TRY[out.state.phase];
+      text = alt && alt !== last ? alt : `Sorry, one more time. ${text}`;
+    }
+    last = text;
+    return { ...a, text };
+  });
+  return { state: { ...out.state, lastSaid: last }, actions };
+}
+
+function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; actions: FlowAction[] } {
   if (state.phase === "done") return { state, actions: [] };
 
   if (event.type === "hung_up") {
@@ -308,7 +340,11 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
       });
       // One miss gets a short answer and the question again; the second offers Sam.
       const miss = (first: string) =>
-        heard.misses >= 1 ? handoff({ ...heard, misses: 0 }, "not_heard") : reprompt({ ...heard, misses: heard.misses + 1 }, first);
+        heard.misses >= MAX_RETRIES
+          ? handoff({ ...heard, misses: 0 }, "not_heard")
+          : heard.misses >= 1
+            ? { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say" as const, text: SECOND_TRY[state.phase] ?? LINES.offer }] }
+            : reprompt({ ...heard, misses: heard.misses + 1 }, first);
 
       // Answers that win in any phase, said any way (free-form, not a fixed path).
       if (state.phase === "ask_contact") {
@@ -376,7 +412,8 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
       if (state.phase === "ask_order") {
         const reading = readOrderNumber(text);
         if (reading) return gotNumber(heard, reading);
-        if (heard.misses >= 1) return handoff({ ...heard, misses: 0 }, "not_heard");
+        if (heard.misses >= MAX_RETRIES) return handoff({ ...heard, misses: 0 }, "not_heard");
+        if (heard.misses >= 1) return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: SECOND_TRY.ask_order! }] };
         const wordy = text.trim().split(/\s+/).length > 3;
         return {
           state: { ...heard, misses: heard.misses + 1 },
@@ -387,8 +424,9 @@ export function step(state: FlowState, event: FlowEvent): { state: FlowState; ac
       if (state.phase === "ask_name") return miss("");
 
       // ask_contact, but what we heard wasn't a phone number or email
-      if (heard.misses >= 1) return handoff({ ...heard, misses: 0 }, "not_heard");
-      return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: LINES.askContactAgain }] };
+      if (heard.misses >= MAX_RETRIES) return handoff({ ...heard, misses: 0 }, "not_heard");
+      const again = heard.misses >= 1 ? SECOND_TRY.ask_contact! : LINES.askContactAgain;
+      return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: again }] };
     }
 
     case "looking_up": {

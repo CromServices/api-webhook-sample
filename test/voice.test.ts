@@ -12,6 +12,7 @@ import { openCallLog, type CallLog } from "../src/phone/calllog.ts";
 import { lookupOrder } from "../src/phone/lookup.ts";
 import { sampleOrderSource } from "../src/phone/orders.ts";
 import { callLogPage } from "../src/phone/page.ts";
+import { LINES } from "../src/phone/flow.ts";
 import { bridgeCall, streamToken, twilioSignature, voicemailKey } from "../src/phone/twilio.ts";
 import { StubProvider, type VoiceEvents, type VoiceProvider } from "../src/phone/voice/provider.ts";
 import { XaiVoiceProvider } from "../src/phone/voice/xai.ts";
@@ -66,7 +67,14 @@ class FakeTwilioSocket extends EventEmitter {
 
 const settle = () => new Promise((r) => setTimeout(r, 15));
 
-async function callThroughBridge(provider: FakeProvider | VoiceProvider, script: (typeof SCRIPTS)[number], log: CallLog, callSid = SID) {
+async function callThroughBridge(
+  provider: FakeProvider | VoiceProvider,
+  script: (typeof SCRIPTS)[number],
+  log: CallLog,
+  callSid = SID,
+  extra: Record<string, unknown> = {},
+  params: Record<string, string> = {},
+) {
   const ws = new FakeTwilioSocket();
   const afters: string[] = [];
   const orders = sampleOrderSource();
@@ -76,13 +84,15 @@ async function callThroughBridge(provider: FakeProvider | VoiceProvider, script:
     callLog: log,
     lookup: (o, c) => lookupOrder(orders, o, c),
     silenceMs: 60_000,
+    joinMs: 5,
+    ...extra,
     onAfter: (_sid, what) => afters.push(what),
   });
   ws.twilio({ event: "connected" });
   ws.twilio({
     event: "start",
     streamSid: "MZtest",
-    start: { callSid, streamSid: "MZtest", customParameters: { token: streamToken(TOKEN, callSid), caller: script.caller } },
+    start: { callSid, streamSid: "MZtest", customParameters: { token: streamToken(TOKEN, callSid), caller: script.caller, ...params } },
   });
   await settle();
   for (const turn of script.turns) {
@@ -223,7 +233,8 @@ describe("phone line: Twilio webhooks", () => {
     const next = await post(url, "/phone/after", { CallSid: sid });
     const twiml = await next.text();
     assert.match(twiml, /<Record [^>]*recordingStatusCallback="https:\/\/phone\.example\.test\/phone\/recording"/);
-    assert.match(twiml, /leave a message/);
+    assert.ok(appProvider.said.some((l) => /leave a message after the tone/.test(l)), "voicemail prompt in the line's own voice");
+    assert.doesNotMatch(twiml, /<Say/, "no second voice");
   });
 
   it("logs voicemail from Twilio's recording callback and serves it to the owner only", async () => {
@@ -433,5 +444,59 @@ describe("phone line: call log page", () => {
     assert.match(html, /hung up before leaving a message/);
     assert.equal((html.match(/\/calls\/voicemail\//g) ?? []).length, 1);
     assert.doesNotMatch(html, /0491570158|0491 570 158/);
+  });
+});
+
+describe("phone line: turn taking", () => {
+  it("joins speech pieces split by a pause into one answer", async () => {
+    const provider = new FakeProvider();
+    const log = openCallLog();
+    const ws = new FakeTwilioSocket();
+    const orders = sampleOrderSource();
+    bridgeCall(ws as unknown as WebSocket, {
+      authToken: TOKEN, provider, callLog: log, lookup: (o, c) => lookupOrder(orders, o, c),
+      silenceMs: 60_000, joinMs: 40, onAfter: () => {},
+    });
+    ws.twilio({ event: "start", start: { callSid: SID, streamSid: "MZ", customParameters: { token: streamToken(TOKEN, SID), caller: "" } } });
+    await settle();
+    provider.hear("one oh four two");
+    await new Promise((r) => setTimeout(r, 100));
+    provider.hear("0 4 9 1");
+    provider.events!.onSpeechStarted!();
+    await new Promise((r) => setTimeout(r, 60));
+    provider.hear("5 7 0 1 5 6");
+    await new Promise((r) => setTimeout(r, 120));
+    assert.match(provider.said.join(" "), /on its way/i, provider.said.join(" | "));
+    ws.close();
+  });
+
+  it("outbound calls wait for hello before the greeting", async () => {
+    const provider = new FakeProvider();
+    const ws = new FakeTwilioSocket();
+    bridgeCall(ws as unknown as WebSocket, {
+      authToken: TOKEN, provider, callLog: openCallLog(), lookup: () => ({ match: false, say: "" }),
+      silenceMs: 60_000, joinMs: 5, helloWaitMs: 10_000, onAfter: () => {},
+    });
+    ws.twilio({ event: "start", start: { callSid: SID, streamSid: "MZ", customParameters: { token: streamToken(TOKEN, SID), caller: "", direction: "outbound" } } });
+    await settle();
+    assert.equal(provider.said.length, 0, "silent until hello");
+    provider.hear("Hello?");
+    await settle();
+    assert.equal(provider.said[0], LINES.greet);
+    assert.equal(provider.said.length, 1, "the hello is not taken as an answer");
+    ws.close();
+  });
+
+  it("outbound calls greet anyway after the wait if nobody speaks", async () => {
+    const provider = new FakeProvider();
+    const ws = new FakeTwilioSocket();
+    bridgeCall(ws as unknown as WebSocket, {
+      authToken: TOKEN, provider, callLog: openCallLog(), lookup: () => ({ match: false, say: "" }),
+      silenceMs: 60_000, helloWaitMs: 30, onAfter: () => {},
+    });
+    ws.twilio({ event: "start", start: { callSid: SID, streamSid: "MZ", customParameters: { token: streamToken(TOKEN, SID), caller: "", direction: "outbound" } } });
+    await new Promise((r) => setTimeout(r, 80));
+    assert.equal(provider.said[0], LINES.greet);
+    ws.close();
   });
 });

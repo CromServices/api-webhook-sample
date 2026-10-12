@@ -25,6 +25,11 @@ export type XaiOptions = {
   connect?: (url: string, headers: Record<string, string>) => WebSocket;
 };
 
+const KEYTERMS = [
+  "Sam's Café", "Sam", "order number", "thousand", "forty-two", "oh", "double", "triple",
+  "voicemail", "message", "yes", "no", "mobile", "email", "at", "dot com",
+];
+
 const INSTRUCTIONS =
   "You are only the voice of a shop's phone line. Do not reply to the caller on your own. " +
   "Say nothing unless you are given an exact line to read.";
@@ -70,7 +75,13 @@ export class XaiVoiceProvider implements VoiceProvider {
             audio: {
               // grok-transcribe is needed: without a transcription model no caller
               // transcripts arrive at all (checked live, 10 Oct 2026).
-              input: { format: { type: "audio/pcmu" }, transcription: { model: "grok-transcribe", language_hint: "en" } },
+              input: { format: { type: "audio/pcmu" }, transcription: {
+                  model: "grok-transcribe",
+                  // xAI lists "en" only (no en-AU). Keyterms bias the words this line needs.
+                  language_hint: "en",
+                  keyterms: KEYTERMS,
+                },
+              },
               output: { format: { type: "audio/pcmu" } },
             },
           },
