@@ -16,6 +16,7 @@ primary_region = "syd"
   DATA_PATH = "/data/demo-shop.json"
   CALL_LOG_PATH = "/data/calls.json"
   SHOP_TIME_ZONE = "Australia/Perth"
+  PHONE_TRANSCRIPT_LOG = "0"
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
 
 [mounts]
