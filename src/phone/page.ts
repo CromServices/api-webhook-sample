@@ -11,6 +11,14 @@ function esc(value: string): string {
 }
 
 /** Never the whole number on screen: 0491570006 -> "Mobile ending 006"; 0855501234 -> "(08) number ending 234". */
+/** Phone-number-like runs in free text (voicemail, messages): keep only the last three digits. */
+export function maskDigits(text: string): string {
+  return text.replace(/\+?\d[\d ()-]{6,}\d/g, (m) => {
+    const d = m.replace(/\D/g, "");
+    return d.length >= 8 ? `[number ending ${d.slice(-3)}]` : m;
+  });
+}
+
 export function showPhone(value: string): string {
   if (/^04\d{8}$/.test(value)) return `Mobile ending ${value.slice(7)}`;
   if (/^0[2378]\d{8}$/.test(value)) return `(${value.slice(0, 2)}) number ending ${value.slice(7)}`;
@@ -72,7 +80,7 @@ function card(entry: CallLogEntry, timeZone: string, opts: PageOpts = {}): strin
     row("Told", sentence(entry.told) || "Nothing yet, the caller hung up"),
     row(`Passed to ${OWNER_NAME}`, passed(entry)),
   ];
-  if (entry.message) rows.push(row("Message", `"${entry.message}"`));
+  if (entry.message) rows.push(row("Message", `"${maskDigits(entry.message)}"`));
   if (entry.textStatus === "not_set_up") rows.push(row(`Text to ${OWNER_NAME}`, "Not set up yet"));
   if (entry.textStatus === "sent") rows.push(row(`Text to ${OWNER_NAME}`, "Sent"));
   if (entry.recordingUrl && entry.ref && opts.voicemailHref) {

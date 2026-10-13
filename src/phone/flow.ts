@@ -22,7 +22,7 @@ export const MAX_RETRIES = 2;
 /** Second-try wording, so the line never says the same sentence twice in a row. */
 export const SECOND_TRY: Record<string, string> = {
   ask_order: "Could you say the order number one digit at a time? Like one, oh, four, two.",
-  ask_contact: "Try the mobile number one digit at a time, or spell out the email.",
+  ask_contact: "Could you say the mobile one digit at a time, or spell out the email?",
   ask_name: "Just your first name, then the last three digits of your phone, please.",
   confirm_order: "Was that the right order number? Yes or no is fine.",
   told: "Anything else? You can check another order or ask for Sam.",
@@ -31,6 +31,12 @@ export const SECOND_TRY: Record<string, string> = {
 export const LINES = {
   // Under 4 seconds spoken. Detours (Sam, hours, no number) work without being listed.
   greet: `Hi, it's ${SHOP_NAME}. What's your order number?`,
+  /** The caller's first words were just "hello?": greet again, not counted as a miss. */
+  greetAgain: `Hi there, you're through to ${SHOP_NAME}. What's your order number?`,
+  /** First no-match: keep the order, ask for the contact again, offer the name lookup. */
+  noMatchHint: (n: string) =>
+    `Sorry, I couldn't match that to order ${sayDigits(n)}. What's the mobile or email on it? Or your first name and the last three digits of your phone?`,
+  orderRequest: `I can't place orders, but I'll pass it to ${OWNER_NAME}.`,
   askOrderAgain: "Sorry, I missed that. What's the order number?",
   askContact: "Thanks. And what's the mobile number or email on the order?",
   askContactAgain: "Sorry, I missed that. What's the mobile or email on the order?",
@@ -63,6 +69,7 @@ export const ASKED = {
   status: "Where's my order",
   change: "To change an order",
   person: `To talk to ${OWNER_NAME}`,
+  orderRequest: `To place an order (request for ${OWNER_NAME})`,
 } as const;
 
 export const TOLD = {
@@ -106,6 +113,8 @@ export type FlowState = {
   message: string | null;
   textedOwner: boolean;
   flags?: FlowFlags;
+  /** True once anything has been heard from the caller. */
+  heardAny?: boolean;
   /** Last sentence spoken, so it is never said twice in a row. */
   lastSaid?: string;
 };
@@ -155,6 +164,7 @@ export const ACTION_TYPES: readonly FlowAction["type"][] = [
 ];
 
 export type Intent =
+  | "order_request"
   | "change"
   | "complaint"
   | "person"
@@ -166,6 +176,10 @@ export type Intent =
   | "no"
   | "yes"
   | "none";
+
+/** Wants to place a (new) order. The line never places orders; it passes the request to Sam. */
+export const ORDER_REQUEST =
+  /\b(order me|orders? (me )?something|place (an|a|a new|another) order|make (an|a|another) order|put (in|through) (an|a|another) order|new order|(can|could|may) i (order|get an order)|(i'?d|i would|i'?ll|i want to|i wanna|want to|wanna) (like to )?order\b|(get|have) (sam|him|her|someone) (to )?order|take (an|my) order)\b/i;
 
 const CHANGE =
   /\b(change|changing|cancel+(ing|ed)?|refund|swap|switch|modify(ing)?|amend|edit|updat(e|ing)|instead|different address|add (a|an|another|one|some)|remove|take off|scrap (that|it|my)|don'?t (need|want) (it|that|the order)|money back)\b/i;
@@ -188,6 +202,7 @@ const YES = /^\s*(yes|yeah|yep|yup|sure|please(?! \w+ the)|correct|right|exactly
 
 export function detectIntent(text: string): Intent {
   if (NO_NUMBER.test(text)) return "no_number";
+  if (ORDER_REQUEST.test(text) && !/\b(my|the|that|this) order\b/i.test(text.replace(ORDER_REQUEST, ""))) return "order_request";
   if (CHANGE.test(text)) return "change";
   if (COMPLAINT.test(text)) return "complaint";
   if (PERSON.test(text)) return "person";
@@ -290,8 +305,9 @@ function ownerText(state: FlowState): string {
           : "called, but the line was hard to hear";
   const who = state.caller ? `Missed call from ${spaced(state.caller)}` : "Missed call (no caller number)";
   const order = state.orderNumber ? ` about order ${state.orderNumber}` : "";
+  const wantsOrder = state.asked.includes(ASKED.orderRequest) ? " They also want to place an order (the line can't take orders)." : "";
   const message = state.message ? ` Message: "${state.message}"` : " No message left.";
-  return `${SHOP_NAME} line. ${who}${order}. They ${wanted}.${message} Please call them back.`;
+  return `${SHOP_NAME} line. ${who}${order}. They ${wanted}.${wantsOrder}${message} Please call them back.`;
 }
 
 const REPROMPT: Partial<Record<Phase, string>> = {
@@ -301,6 +317,9 @@ const REPROMPT: Partial<Record<Phase, string>> = {
   ask_contact: LINES.askContactAgain,
   told: LINES.anythingElse,
 };
+
+const HELLO_ONLY =
+  /^\W*(hello|hi|hey|hiya|g'?day|yeah|yes|hello,? (hello|who'?s (this|that)|who is (this|it))|who'?s (this|calling)|who is this)\W*(\W+(hello|hi|yeah|there))*\W*$/i;
 
 /** A number heard: read it back first if it could have been misheard, else go on. */
 function gotNumber(state: FlowState, reading: { number: string; sure: boolean }) {
@@ -373,7 +392,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         };
       }
       if (event.type !== "heard") return { state, actions: [] };
-      const heard = { ...state, silences: 0 };
+      const heard = { ...state, silences: 0, heardAny: true };
       const text = event.text;
       const reprompt = (st: FlowState, first: string) => ({
         state: st,
@@ -387,7 +406,29 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
             ? { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say" as const, text: SECOND_TRY[state.phase] ?? LINES.offer }] }
             : reprompt({ ...heard, misses: heard.misses + 1 }, first);
 
+      // First thing heard is just "hello?" (outbound calls, or talking over the greeting): greet again, no miss.
+      if (state.phase === "ask_order" && !state.heardAny && HELLO_ONLY.test(text)) {
+        return { state: heard, actions: [{ type: "say", text: LINES.greetAgain }] };
+      }
+
       // Answers that win in any phase, said any way (free-form, not a fixed path).
+      if (state.phase === "ask_contact" && state.failedLookups > 0 && state.orderNumber) {
+        // After a no-match the caller may give first name + last 3 digits instead (the hint offers it).
+        // 3 digits + a name: the name lookup. 4 to 6 digits: a different order number.
+        const d = spokenDigits(text);
+        const rest = text.replace(
+          /\b(it'?s|its|my|name|is|and|the|last|three|digits|of|phone|mobile|number|sorry|no|yes|yeah|um|uh|oh|actually|zero|one|two|four|five|six|seven|eight|nine|double|triple|i'?m|am|this)\b/gi,
+          "",
+        );
+        if (d.length === 3 && /\b[a-z]{2,}\b/i.test(rest)) {
+          return {
+            state: { ...heard, phase: "looking_up", misses: 0 },
+            actions: [{ type: "lookup_by_name", text }],
+          };
+        }
+        const other = d.length >= 4 && d.length <= 6 ? readOrderNumber(text) : null;
+        if (other && other.number !== state.orderNumber) return gotNumber(heard, other);
+      }
       if (state.phase === "ask_contact") {
         const contact = normaliseContact(text);
         if (contact && state.orderNumber) {
@@ -405,13 +446,17 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       }
 
       const intent = detectIntent(text);
+      if (intent === "order_request") {
+        const noted = { ...heard, asked: addOnce(heard.asked, ASKED.orderRequest) };
+        return reprompt(noted, LINES.orderRequest);
+      }
       if (intent === "change") return handoff(heard, "change");
       if (intent === "complaint") return handoff(heard, "complaint");
       if (intent === "person") return handoff(heard, "person");
       if (intent === "message") return handoff(heard, "message");
       if (intent === "hours") return reprompt(heard, SHOP_INFO.hours);
       if (intent === "location") return reprompt(heard, SHOP_INFO.where);
-      if (intent === "no_number" && state.phase !== "ask_contact") {
+      if (intent === "no_number" && (state.phase !== "ask_contact" || state.failedLookups > 0)) {
         return {
           state: { ...heard, phase: "ask_name", misses: 0, orderNumber: null, asked: addOnce(heard.asked, ASKED.status) },
           actions: [{ type: "say", text: LINES.noNumber }],
@@ -489,6 +534,13 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       const failed = state.failedLookups + 1;
       const told = addOnce(state.told, TOLD.noMatch);
       if (failed >= 2) return handoff({ ...state, failedLookups: failed, told }, "no_match");
+      // Keep the confirmed order: ask for the contact again and offer the name + last-3 lookup.
+      if (state.orderNumber) {
+        return {
+          state: { ...state, phase: "ask_contact", misses: 0, failedLookups: failed, told },
+          actions: [{ type: "say", text: LINES.noMatchHint(state.orderNumber) }],
+        };
+      }
       return {
         state: { ...state, phase: "ask_order", orderNumber: null, failedLookups: failed, told },
         actions: [{ type: "say", text: LINES.tryAgain }],
@@ -528,8 +580,15 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       }
       if (event.type !== "heard") return { state, actions: [] };
       const message = event.text.trim().slice(0, 500);
-      const next = { ...state, message, textedOwner: true, told: addOnce(state.told, TOLD.callBack) };
-      const done = finish(next, LINES.messageTaken);
+      const wantsOrder = detectIntent(message) === "order_request" || ORDER_REQUEST.test(message);
+      const next = {
+        ...state,
+        message,
+        textedOwner: true,
+        told: addOnce(state.told, TOLD.callBack),
+        asked: wantsOrder ? addOnce(state.asked, ASKED.orderRequest) : state.asked,
+      };
+      const done = finish(next, wantsOrder ? `${LINES.orderRequest} ${LINES.messageTaken}` : LINES.messageTaken);
       return { state: done.state, actions: [{ type: "text_owner", body: ownerText(next) }, ...done.actions] };
     }
 

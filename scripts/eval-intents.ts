@@ -13,7 +13,7 @@ export type Row = { text: string; expect: string; src?: string; label?: string }
 /** Our intent -> the handling class the corpora are labelled with. */
 export function handling(text: string): string {
   const i = detectIntent(text);
-  if (i === "change" || i === "complaint") return "handoff";
+  if (i === "change" || i === "complaint" || i === "order_request") return "handoff";
   if (i === "message") return "person";
   return i;
 }

@@ -96,7 +96,14 @@ export function normaliseAuPhone(input: string): string | null {
 /** Emails compare trimmed and case-insensitive. Spoken " at " / " dot " are accepted. */
 export function normaliseEmail(input: string): string | null {
   if (typeof input !== "string" || input.length > 254) return null;
-  let value = input.trim().toLowerCase();
+  let value = input.trim().toLowerCase().replace(/[.!?,;]+\s*$/, "");
+  // Spoken lead-ins: "yeah it's ...", "my email is ...", "that's ..."
+  value = value.replace(
+    /^((yeah|yep|yes|um+|uh+|so|okay|ok)[,.]?\s+)*((it'?s|it is|that'?s|that is|(my |the )?email( address)? is|(my |the )?email:?)\s+)+/,
+    "",
+  );
+  // Spoken punctuation in the local part / domain.
+  value = value.replace(/\s+(underscore)\s+/g, "_").replace(/\s+(dash|hyphen)\s+/g, "-");
   if (!value.includes("@")) {
     value = value.replace(/\s+at\s+/g, "@");
   }
@@ -207,6 +214,10 @@ export function readOrderNumber(input: string): OrderNumberReading | null {
   let number: string | null;
   let sure: boolean;
   if (best.some((t) => t === "thousand" || t === "hundred")) {
+    // Stutters: "a thousand, a thousand, thousand and forty-two" -> take the last "thousand" phrase only.
+    const at: number[] = [];
+    best.forEach((t, i) => t === "thousand" && at.push(i));
+    if (at.length > 1) best = best.slice(at[at.length - 2]! + 1);
     const n = cardinal(best);
     number = n === null ? null : String(n);
     sure = false;

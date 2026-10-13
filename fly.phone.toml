@@ -17,6 +17,10 @@ primary_region = "syd"
   CALL_LOG_PATH = "/data/calls.json"
   SHOP_TIME_ZONE = "Australia/Perth"
   PHONE_TRANSCRIPT_LOG = "0"
+  # Kept on after call 3 (both helped). Voicemail text flags order requests for Sam.
+  PHONE_BARGE_IN = "1"
+  PHONE_CONFIRM_REASK = "1"
+  PHONE_VOICEMAIL_TRANSCRIBE = "1"
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
 
 [mounts]

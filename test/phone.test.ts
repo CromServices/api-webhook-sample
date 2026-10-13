@@ -278,7 +278,8 @@ describe("phone line: call flow (scripted calls, mock phone and texts)", () => {
   it("wrong order number twice: tries again once, then rings Sam, then takes a message", async () => {
     const log = openCallLog();
     const ran = await runScript(script("wrong order number"), { log });
-    assert.equal(ran.said.filter((line) => line === LINES.tryAgain).length, 1);
+    // First no-match keeps the order and offers the name + last-3 lookup; the caller gives a new number.
+    assert.equal(ran.said.filter((line) => line === LINES.noMatchHint("1099")).length, 1);
     assert.ok(ran.said.includes(LINES.handoffNoMatch));
     assert.equal(ran.rang, 1);
     assert.equal(ran.texts.length, 1);

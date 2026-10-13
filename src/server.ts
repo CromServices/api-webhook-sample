@@ -34,6 +34,7 @@ const app = createApp({
       // Off until tried on a live call.
       bargeIn: process.env.PHONE_BARGE_IN === "1",
       confirmReask: process.env.PHONE_CONFIRM_REASK === "1",
+      voicemailTranscribe: process.env.PHONE_VOICEMAIL_TRANSCRIBE === "1",
       joinMs: process.env.PHONE_JOIN_MS ? Number(process.env.PHONE_JOIN_MS) : undefined,
       provider: new XaiVoiceProvider({
         apiKey: process.env.XAI_API_KEY ?? "",
