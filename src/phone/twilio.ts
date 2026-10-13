@@ -53,6 +53,10 @@ export type TwilioOptions = {
   endSilenceMs?: number;
   /** Caller-audio energy that counts as speech (mean |linear| per 20 ms frame, default 400). */
   vadThreshold?: number;
+  /** Quietest level that can still count as speech once the line's noise floor is known (default 150). */
+  vadMinThreshold?: number;
+  /** After a barge-in, say the stopped line again if nothing is heard within this long (default 2000 ms). */
+  resayMs?: number;
   /** Join window once the caller has started reading out a phone number (default 2000 ms). */
   digitJoinMs?: number;
   /** Print a timed transcript to the server log (test calls only). */
@@ -311,11 +315,20 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   const replyGaps: number[] = [];
   const bargeIns: number[] = [];
   let speaking = false;
+  let playId = 0;
   /** Caller voice activity from the Twilio audio (energy VAD). */
   let lastVoiceAt = 0;
   let voicedFrames = 0;
   let onsetAt = 0;
   const vadThreshold = opts.vadThreshold ?? 400;
+  const vadMin = Math.min(opts.vadMinThreshold ?? 150, vadThreshold);
+  /** Running noise floor of the caller's line; the speech threshold adapts to it (quiet talkers). */
+  let noiseFloor = 50;
+  let audioSeen = false;
+  let currentLine = "";
+  let resayTimer: NodeJS.Timeout | null = null;
+  const resayMs = opts.resayMs ?? 2000;
+  const threshold = () => Math.max(vadMin, Math.min(vadThreshold, noiseFloor * 10));
   /** Mid phone number: digits started in ask_contact but fewer than 10 so far. */
   const midNumber = () => {
     if (session?.phase !== "ask_contact") return false;
@@ -328,6 +341,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let waitingForHello = false;
   let startFlow: (() => void) | null = null;
   let greetingAt = 0;
+  let sayLine: (text: string) => Promise<void> = async () => {};
   /** Stop the line the instant the caller starts talking (barge-in, any line). */
   const stopPlayback = (why: string) => {
     if (!speaking || !opts.bargeIn) return;
@@ -335,9 +349,30 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     voice?.stop?.();
     for (const done of marks.values()) done();
     marks.clear();
+    playId += 1;
+    speaking = false;
     const ms = onsetAt ? Date.now() - onsetAt : 0;
     bargeIns.push(ms);
     note("caller", `(talking: line stopped, ${why}, ${ms} ms after speech onset)`);
+    if (why !== "turn taken") armResay(currentLine, joinWaits.length);
+  };
+  /** Stopped but then nothing came: say the stopped line again rather than leave dead air. */
+  const armResay = (line: string, turns: number) => {
+    if (resayTimer) clearTimeout(resayTimer);
+    if (!line) return;
+    const check = () => {
+      resayTimer = null;
+      if (ended || joinWaits.length !== turns || pending.length || speaking) return;
+      if (Date.now() - lastVoiceAt < 1000) {
+        resayTimer = setTimeout(check, 500);
+        return;
+      }
+      note("line", "(nothing heard after the stop: saying it again)");
+      void run(async () => {
+        if (joinWaits.length === turns && !pending.length) await sayLine(line);
+      });
+    };
+    resayTimer = setTimeout(check, resayMs);
   };
   const callerSpeechStarted = (why: string) => {
     clearSilence();
@@ -346,6 +381,8 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   const flush = () => {
     if (joinTimer) clearTimeout(joinTimer);
     joinTimer = null;
+    if (resayTimer) clearTimeout(resayTimer);
+    resayTimer = null;
     if (!pending.length) return;
     const text = pending.join(" ");
     pending = [];
@@ -355,7 +392,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
       note("caller", `${text} (hello during the greeting: ignored)`);
       return;
     }
-    const waited = Date.now() - Math.max(lastPieceAt, lastVoiceAt);
+    const waited = Date.now() - speechEndRef();
     joinWaits.push(waited);
     heardAt = Date.now();
     awaitingReply = true;
@@ -369,10 +406,18 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     joinTimer = null;
     if (!pending.length) return;
     const need = midNumber() ? Math.max(endSilenceMs, digitJoinMs) : endSilenceMs;
-    const quiet = Date.now() - Math.max(lastPieceAt, lastVoiceAt);
-    if (quiet >= need || Date.now() - firstPieceAt >= maxHoldMs) return flush();
-    joinTimer = setTimeout(checkTurn, Math.max(20, need - quiet));
+    // Quiet counts from the end of his real speech (our VAD), not from when the text arrived;
+    // still give speech-to-text 100 ms for a follow-on piece.
+    const quiet = Date.now() - speechEndRef();
+    const pieceGap = audioSeen ? 100 : 0;
+    const sincePiece = Date.now() - lastPieceAt;
+    if ((quiet >= need && sincePiece >= pieceGap) || Date.now() - firstPieceAt >= maxHoldMs) return flush();
+    joinTimer = setTimeout(checkTurn, Math.max(need - quiet, pieceGap - sincePiece, 1));
   };
+  /** When he last spoke: our VAD when we have his audio, else when the text arrived. */
+  function speechEndRef() {
+    return audioSeen && lastVoiceAt ? lastVoiceAt : Math.max(lastPieceAt, lastVoiceAt);
+  }
   const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const heardPiece = (text: string) => {
     if (waitingForHello) {
@@ -395,14 +440,20 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     if (!bytes.length) return;
     let sum = 0;
     for (const b of bytes) sum += Math.abs(MULAW[b]!);
-    if (sum / bytes.length > vadThreshold) {
+    audioSeen = true;
+    const level = sum / bytes.length;
+    if (level > threshold()) {
       voicedFrames += 1;
       if (voicedFrames === 1) onsetAt = Date.now();
       if (voicedFrames >= 2) {
         lastVoiceAt = Date.now();
         if (voicedFrames === 2) callerSpeechStarted("caller audio");
       }
-    } else voicedFrames = 0;
+    } else {
+      voicedFrames = 0;
+      // Falls quickly to a quiet line, rises slowly (so speech can't drag it up).
+      noiseFloor = level < noiseFloor ? noiseFloor * 0.9 + level * 0.1 : noiseFloor * 0.98 + level * 0.02;
+    }
   };
   // Off by default. PHONE_TRANSCRIPT_LOG=1 prints a timed transcript for test calls only.
   const trace = opts.transcriptLog ?? false;
@@ -516,13 +567,16 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
               heardPiece(text);
             },
             onInterrupted() {
-              stopPlayback("speech-to-text");
+              if (!audioSeen || Date.now() - lastVoiceAt < 600) stopPlayback("speech-to-text");
             },
             onSpeechStarted() {
-              callerSpeechStarted("speech-to-text");
+              // xAI's speech-start can land ~0.5-1 s late: only stop the line for speech our VAD
+              // heard just now (or when we have no audio of our own), not for a sound that ended before the line began.
+              if (!audioSeen || Date.now() - lastVoiceAt < 600) callerSpeechStarted("speech-to-text");
+              else clearSilence();
               // Outbound: greet once the person has said hello (speech start + a beat).
               if (waitingForHello && startFlow) setTimeout(() => startFlow?.(), 700);
-              lastVoiceAt = Date.now();
+              if (!audioSeen) lastVoiceAt = Date.now();
             },
             onError(m) {
               console.error("phone line: voice error", m);
@@ -538,19 +592,23 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           return;
         }
         voiceStarted = Date.now();
+        sayLine = async (text: string) => {
+          bytes = 0;
+          note("line", text);
+          // Barge-in (flag): every line can be talked over, and the caller's audio is never dropped.
+          const interruptible = !!opts.bargeIn;
+          speaking = true;
+          currentLine = text;
+          const id = ++playId;
+          await voice!.say(text, { interruptible });
+          // Stopped by a barge-in while it was being generated: nothing left to play out.
+          if (id === playId) await playMark(bytes);
+          if (id === playId) speaking = false;
+        };
         session = new CallSession({
           ref: callSid,
           telephony: {
-            say: async (text) => {
-              bytes = 0;
-              note("line", text);
-              // Barge-in (flag): every line can be talked over, and the caller's audio is never dropped.
-              const interruptible = !!opts.bargeIn;
-              speaking = true;
-              await voice!.say(text, { interruptible });
-              await playMark(bytes);
-              speaking = false;
-            },
+            say: (text) => sayLine(text),
             ringOwner: async () => {
               opts.onAfter(callSid, "handover");
               // No owner phone: straight to voicemail, so say the prompt in the line's own voice.
