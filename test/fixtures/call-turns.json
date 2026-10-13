@@ -59,5 +59,75 @@
   "text": "Zero",
   "issue": "misheard",
   "lineReply": "Sorry, I didn't catch that. What's the order number?"
+ },
+ {
+  "call": "call-3",
+  "t": 6.34,
+  "text": "Hello?",
+  "issue": "misheard",
+  "lineReply": "Sorry, I missed that. What's the order number?"
+ },
+ {
+  "call": "call-3",
+  "t": 15.98,
+  "text": "A thousand, a thousand, thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order three-oh-four-two?"
+ },
+ {
+  "call": "call-3",
+  "t": 24.84,
+  "text": "No, it's a thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?"
+ },
+ {
+  "call": "call-3",
+  "t": 30.97,
+  "text": "Yes.",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?"
+ },
+ {
+  "call": "call-3",
+  "t": 42.21,
+  "text": "[spoken mobile masked]",
+  "issue": "misheard",
+  "lineReply": "Sorry, I couldn't match those details to an order. Let's try once more. What's the order number?"
+ },
+ {
+  "call": "call-3",
+  "t": 55.55,
+  "text": "A thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?"
+ },
+ {
+  "call": "call-3",
+  "t": 61.45,
+  "text": "Yes.",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?"
+ },
+ {
+  "call": "call-3",
+  "t": 73.12,
+  "text": "It's crom services at g mail dot com dot A U.",
+  "issue": "misheard",
+  "lineReply": "Sorry, I missed that. What's the mobile or email on the order?"
+ },
+ {
+  "call": "call-3",
+  "t": 85.55,
+  "text": "Yeah, you've missed it a few times now. It's uh, 0 4",
+  "issue": "ok",
+  "lineReply": "Try the mobile number one digit at a time, or spell out the email."
+ },
+ {
+  "call": "call-3",
+  "t": 86.8,
+  "text": "Yeah, you've missed it a few times now. It's uh, [spoken mobile masked]",
+  "issue": "misheard",
+  "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
  }
 ]
