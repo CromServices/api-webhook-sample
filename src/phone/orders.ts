@@ -1,4 +1,4 @@
-import { normaliseAuPhone, normaliseEmail } from "./normalise.ts";
+import { emailMatchesHeard, normaliseAuPhone, normaliseEmail } from "./normalise.ts";
 
 /**
  * Where an order is, in words a caller understands. The phone line only ever
@@ -71,8 +71,9 @@ export function sampleOrderSource(rows: readonly PhoneOrder[] = SAMPLE_ORDERS): 
 /** True only if the given contact is this order's phone or email. */
 export function contactMatches(
   order: Readonly<PhoneOrder>,
-  contact: { kind: "email" | "phone"; value: string },
+  contact: { kind: "email" | "phone"; value: string; atless?: true },
 ): boolean {
   if (contact.kind === "phone") return normaliseAuPhone(order.phone) === contact.value;
+  if (contact.kind === "email" && contact.atless) return emailMatchesHeard(order.email, contact.value);
   return normaliseEmail(order.email) === contact.value;
 }

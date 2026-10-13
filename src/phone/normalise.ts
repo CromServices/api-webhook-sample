@@ -118,16 +118,48 @@ export function normaliseEmail(input: string): string | null {
   return /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(value) ? value : null;
 }
 
+/**
+ * Speech-to-text often loses the "@": "dom dot p at example dot com" comes back as
+ * "dom.padexample.com" ("p at" fused into "pad") or "dom.p example.com". Such an
+ * @-less address can't be split reliably, so it's kept whole (no @) and matched
+ * against the order's own email by emailMatchesHeard.
+ */
+export function normaliseAtlessEmail(input: string): string | null {
+  if (typeof input !== "string" || input.length > 254 || input.includes("@")) return null;
+  let value = input.trim().toLowerCase().replace(/[.!?,;]+\s*$/, "");
+  value = value.replace(
+    /^((yeah|yep|yes|um+|uh+|so|okay|ok)[,.]?\s+)*((it'?s|it is|that'?s|that is|(my |the )?email( address)? is|(my |the )?email:?)\s+)+/,
+    "",
+  );
+  value = value.replace(/\s+(underscore)\s+/g, "_").replace(/\s+(dash|hyphen)\s+/g, "-");
+  value = value.replace(/\s*\bdot\b\s*/g, ".").replace(/\s+/g, "");
+  // Must end in a domain-like ".com", ".com.au" etc. and contain at least two dots or a known TLD.
+  if (!/^[a-z0-9._%+-]+\.(com|net|org|edu|gov|io|co|au|me|info|biz)(\.[a-z]{2})?$/.test(value)) return null;
+  if (/^\d[\d.]*$/.test(value)) return null;
+  return value;
+}
+
+/** True if an @-less heard address is this email with the "@" lost, fused ("at"/"ad"/"et") or dropped. */
+export function emailMatchesHeard(email: string, heard: string): boolean {
+  const e = normaliseEmail(email);
+  if (!e) return false;
+  const [local, domain] = e.split("@") as [string, string];
+  return ["", "at", "ad", "et", "a"].some((join) => heard === `${local}${join}${domain}`);
+}
+
 /** A contact is an email if it has an @ (or a spoken "at"), otherwise a phone number. */
 export function normaliseContact(
   input: string,
-): { kind: "email"; value: string } | { kind: "phone"; value: string } | null {
+): { kind: "email"; value: string; atless?: true } | { kind: "phone"; value: string } | null {
   if (typeof input !== "string") return null;
   const looksEmail = input.includes("@") || /\s+at\s+.+\s+dot\s+/i.test(input);
   if (looksEmail) {
     const email = normaliseEmail(input);
-    return email ? { kind: "email", value: email } : null;
+    if (email) return { kind: "email", value: email };
   }
+  const atless = normaliseAtlessEmail(input);
+  if (atless) return { kind: "email", value: atless, atless: true };
+  if (looksEmail) return null;
   const phone = normaliseAuPhone(input);
   return phone ? { kind: "phone", value: phone } : null;
 }
