@@ -36,6 +36,9 @@ export const LINES = {
   /** First no-match: keep the order, ask for the contact again, offer the name lookup. */
   noMatchHint: (n: string) =>
     `That contact doesn't match the details on order ${sayDigits(n)}. What's the mobile or email on that order? Or your first name and the last three digits of your phone?`,
+  /** First no-match after a spoken email: emails mishear (names, "@"), so ask for the mobile; name + last 3 still offered. */
+  noMatchEmailAskMobile: (n: string) =>
+    `That email doesn't match order ${sayDigits(n)}. What's the mobile number on the order? Or your first name and the last three digits of your phone?`,
   orderRequest: `I can't place orders, but I'll pass it to ${OWNER_NAME}.`,
   askOrderAgain: "Sorry, I missed that. What's the order number?",
   askContact: "Thanks. And what's the mobile number or email on the order?",
@@ -124,6 +127,8 @@ export type FlowState = {
   heardAny?: boolean;
   /** Last sentence spoken, so it is never said twice in a row. */
   lastSaid?: string;
+  /** Kind of contact in the last lookup ("email" -> the next ask is for the mobile). */
+  lastContactKind?: "email" | "phone";
 };
 
 export type FlowEvent =
@@ -455,7 +460,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         const contact = normaliseContact(text);
         if (contact && state.orderNumber) {
           return {
-            state: { ...heard, phase: "looking_up", misses: 0 },
+            state: { ...heard, phase: "looking_up", misses: 0, lastContactKind: contact.kind },
             actions: [{ type: "lookup", orderNumber: state.orderNumber, contact: text }],
           };
         }
@@ -559,7 +564,10 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       if (state.orderNumber) {
         return {
           state: { ...state, phase: "ask_contact", misses: 0, failedLookups: failed, told },
-          actions: [{ type: "say", text: LINES.noMatchHint(state.orderNumber) }],
+          actions: [{
+            type: "say",
+            text: state.lastContactKind === "email" ? LINES.noMatchEmailAskMobile(state.orderNumber) : LINES.noMatchHint(state.orderNumber),
+          }],
         };
       }
       return {
