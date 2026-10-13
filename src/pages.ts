@@ -31,10 +31,10 @@ function chips(list: { text: string }[]): string {
 /** Pills sit on their own line. Each pill stays one line, with room between them. */
 function pillsBelow(list: { text: string }[]): string {
   if (list.length === 0) return "";
-  return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">${list
+  return `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">${list
     .map(
       (chip) =>
-        `<span class="crom-chip" style="white-space:nowrap;flex-shrink:0;padding:6px 14px;">${esc(chip.text)}</span>`,
+        `<span class="crom-chip" style="white-space:nowrap;flex-shrink:0;padding:5px 14px;">${esc(chip.text)}</span>`,
     )
     .join("")}</div>`;
 }
@@ -85,7 +85,7 @@ function intro(title: string): string {
 
 function person(line: PersonLine, compact: boolean): string {
   if (compact) {
-    return `<div style="padding:8px 0 2px;border-top:1px solid var(--border);">
+    return `<div style="padding:6px 0 2px;border-top:1px solid var(--border);">
       <div style="white-space:nowrap;font-size:15px;line-height:1.35;"><strong>${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)}</span></div>
       ${pillsBelow(line.chips)}
     </div>`;
@@ -101,7 +101,7 @@ function person(line: PersonLine, compact: boolean): string {
 
 function sheetSummary(line: SheetLine, compact: boolean): string {
   if (compact) {
-    return `<div style="padding:8px 0 2px;border-top:1px solid var(--border);">
+    return `<div style="padding:6px 0 2px;border-top:1px solid var(--border);">
       <div style="white-space:nowrap;font-size:15px;line-height:1.35;"><strong>${esc(line.date)} · ${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)} · ${esc(line.status)}</span></div>
       ${pillsBelow(line.chips)}
     </div>`;
@@ -136,9 +136,9 @@ function column(title: string, view: ColumnView, stacked = false): string {
   const notes = view.notes
     .map(
       (line) =>
-        `<p style="margin:10px 0 0;">${
+        `<p style="margin:8px 0 0;">${
           stacked
-            ? `<span class="crom-chip" style="white-space:nowrap;flex-shrink:0;padding:6px 14px;">${esc(line)}</span>`
+            ? `<span class="crom-chip" style="white-space:nowrap;flex-shrink:0;padding:5px 14px;">${esc(line)}</span>`
             : `<span class="crom-chip">${esc(line)}</span>`
         }</p>`,
     )
@@ -162,7 +162,7 @@ function column(title: string, view: ColumnView, stacked = false): string {
         </div>
       </div>
       ${priorLines(view)}`;
-  const pad = stacked ? "12px 18px" : "8px 12px";
+  const pad = stacked ? "10px 18px" : "8px 12px";
   return `<section style="border:1px solid var(--border);border-radius:12px;padding:${pad};">
     <h2 class="crom-h3">${esc(title)}</h2>
     <p style="font-weight:600;margin:2px 0 0;font-size:14px;line-height:1.3;">${esc(view.headline)}</p>
