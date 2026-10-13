@@ -61,7 +61,13 @@ function intro(title: string): string {
   </section>`;
 }
 
-function person(line: PersonLine): string {
+function person(line: PersonLine, compact: boolean): string {
+  if (compact) {
+    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0;border-top:1px solid var(--border);font-size:14px;">
+      <span style="min-width:0;"><strong>${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)}</span></span>
+      ${chips(line.chips)}
+    </div>`;
+  }
   return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">
       <strong>${esc(line.name)}</strong>
@@ -71,7 +77,13 @@ function person(line: PersonLine): string {
   </div>`;
 }
 
-function sheetSummary(line: SheetLine): string {
+function sheetSummary(line: SheetLine, compact: boolean): string {
+  if (compact) {
+    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0;border-top:1px solid var(--border);font-size:14px;">
+      <span style="min-width:0;"><strong>${esc(line.date)} · ${esc(line.name)}</strong> <span class="crom-note">${esc(line.phone)} · ${esc(line.want)} · ${esc(line.status)}</span></span>
+      ${chips(line.chips)}
+    </div>`;
+  }
   return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
     <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">
       <strong>${esc(line.date)} · ${esc(line.name)}</strong>
@@ -94,11 +106,11 @@ function column(title: string, view: ColumnView, stacked = false): string {
   const facebook =
     view.facebook.length === 0
       ? `<p class="crom-note" style="margin:8px 0 0;">${esc(STORY.none)}</p>`
-      : view.facebook.map(person).join("");
+      : view.facebook.map((line) => person(line, stacked)).join("");
   const sheet =
     view.sheet.length === 0
       ? `<p class="crom-note" style="margin:8px 0 0;">${esc(STORY.sheetEmpty)}</p>`
-      : view.sheet.map(sheetSummary).join("");
+      : view.sheet.map((line) => sheetSummary(line, stacked)).join("");
   const notes = view.notes
     .map((line) => `<p style="margin:8px 0 0;"><span class="crom-chip">${esc(line)}</span></p>`)
     .join("");
