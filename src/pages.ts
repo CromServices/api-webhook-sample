@@ -21,10 +21,13 @@ function esc(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function chips(list: { text: string }[]): string {
+function chips(list: { text: string }[], compact = false): string {
   if (list.length === 0) return "";
-  return `<span style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;">${list
-    .map((chip) => `<span class="crom-chip">${esc(chip.text)}</span>`)
+  const wrap = compact ? "nowrap" : "wrap";
+  const gap = compact ? "4px" : "6px";
+  const pad = compact ? " style=\"padding:2px 8px;\"" : "";
+  return `<span style="display:flex;flex-wrap:${wrap};gap:${gap};justify-content:flex-end;">${list
+    .map((chip) => `<span class="crom-chip"${pad}>${esc(chip.text)}</span>`)
     .join("")}</span>`;
 }
 
@@ -63,9 +66,9 @@ function intro(title: string): string {
 
 function person(line: PersonLine, compact: boolean): string {
   if (compact) {
-    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0;border-top:1px solid var(--border);font-size:14px;">
-      <span style="min-width:0;"><strong>${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)}</span></span>
-      ${chips(line.chips)}
+    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:1px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.3;">
+      <span style="white-space:nowrap;"><strong>${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)}</span></span>
+      ${chips(line.chips, true)}
     </div>`;
   }
   return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
@@ -79,9 +82,9 @@ function person(line: PersonLine, compact: boolean): string {
 
 function sheetSummary(line: SheetLine, compact: boolean): string {
   if (compact) {
-    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:2px 0;border-top:1px solid var(--border);font-size:14px;">
-      <span style="min-width:0;"><strong>${esc(line.date)} · ${esc(line.name)}</strong> <span class="crom-note">${esc(line.phone)} · ${esc(line.want)} · ${esc(line.status)}</span></span>
-      ${chips(line.chips)}
+    return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:1px 0;border-top:1px solid var(--border);font-size:13px;line-height:1.3;">
+      <span style="white-space:nowrap;"><strong>${esc(line.date)} · ${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)} · ${esc(line.status)}</span></span>
+      ${chips(line.chips, true)}
     </div>`;
   }
   return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
@@ -97,7 +100,7 @@ function priorLines(view: ColumnView): string {
   return view.prior
     .map(
       (line) =>
-        `<p style="margin:8px 0 0;font-size:14px;">${esc(line.name)}. ${esc(line.text)}</p>`,
+        `<p style="margin:4px 0 0;font-size:13px;line-height:1.3;">${esc(line.name)}. ${esc(line.text)}</p>`,
     )
     .join("");
 }
@@ -133,9 +136,10 @@ function column(title: string, view: ColumnView, stacked = false): string {
         </div>
       </div>
       ${priorLines(view)}`;
-  return `<section style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;">
+  const pad = stacked ? "6px 10px" : "8px 12px";
+  return `<section style="border:1px solid var(--border);border-radius:12px;padding:${pad};">
     <h2 class="crom-h3">${esc(title)}</h2>
-    <p style="font-weight:600;margin:4px 0 0;font-size:15px;">${esc(view.headline)}</p>
+    <p style="font-weight:600;margin:2px 0 0;font-size:14px;line-height:1.3;">${esc(view.headline)}</p>
     ${lists}
     ${notes}
   </section>`;
