@@ -32,7 +32,7 @@ export type TwilioOptions = {
   provider: VoiceProvider;
   callLog: CallLog;
   lookup: (orderNumber: string, contact: string, who: string) => Promise<LookupResult> | LookupResult;
-  lookupByName?: (text: string) => Promise<LookupResult> | LookupResult;
+  lookupByName?: (text: string, orderNumber?: string | null) => Promise<LookupResult> | LookupResult;
   sms?: TextSender;
   ownerTextTo?: string;
   /** Silence before the flow is nudged. */

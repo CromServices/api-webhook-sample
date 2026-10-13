@@ -4,7 +4,7 @@ import { STATUS_WORDS, contactMatches, type OrderSource, type OrderStatus } from
 /** The only two shapes the phone line ever gets back. */
 export type LookupResult =
   | { match: true; status: OrderStatus; say: string }
-  | { match: false; say: string };
+  | { match: false; say: string; /** Several orders fit the name + last 3: hand over, reveal nothing. */ ambiguous?: true };
 
 export const NO_MATCH_SAY =
   "Sorry, I couldn't match those details to an order.";
@@ -30,13 +30,19 @@ export function lookupOrder(source: OrderSource, orderInput: unknown, contactInp
  * No order number: the caller gives their first name and the last 3 digits of
  * the phone on the order. Exactly one order must match both, else NO_MATCH.
  */
-export function lookupByName(source: OrderSource, text: unknown): LookupResult {
+/**
+ * With a confirmed order number, only THAT order can match (never another order's status).
+ * Without one, exactly one order must match; several -> ambiguous (hand over to Sam).
+ */
+export function lookupByName(source: OrderSource, text: unknown, orderNumber?: string | null): LookupResult {
   if (typeof text !== "string" || text.length > 200 || !source.all) return NO_MATCH;
   const digits = spokenDigits(text);
   if (digits.length < 3) return NO_MATCH;
   const last3 = digits.slice(-3);
   const words = new Set(text.toLowerCase().match(/[a-z]+/g) ?? []);
-  const hits = source.all().filter((o) => o.name && words.has(o.name.toLowerCase()) && o.phone.endsWith(last3));
+  let hits = source.all().filter((o) => o.name && words.has(o.name.toLowerCase()) && o.phone.endsWith(last3));
+  if (orderNumber) hits = hits.filter((o) => o.number === orderNumber);
+  if (hits.length > 1) return { match: false, say: NO_MATCH_SAY, ambiguous: true };
   if (hits.length !== 1) return NO_MATCH;
   const order = hits[0]!;
   return { match: true, status: order.status, say: STATUS_WORDS[order.status].said };

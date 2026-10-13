@@ -29,7 +29,7 @@ export type SessionDeps = {
   /** Read-only order lookup. */
   lookup(orderNumber: string, contact: string): LookupResult | Promise<LookupResult>;
   /** Optional: no order number, find by first name + last 3 phone digits. */
-  lookupByName?(text: string): Promise<LookupResult> | LookupResult;
+  lookupByName?(text: string, orderNumber?: string | null): Promise<LookupResult> | LookupResult;
   log: CallLog;
   /** Where handoff texts go (the owner's mobile, or a test voicemail line). Never hard-coded. */
   ownerTextTo: string;
@@ -103,7 +103,7 @@ export class CallSession {
         return { type: "lookup_done", result };
       }
       case "lookup_by_name": {
-        const result = this.deps.lookupByName ? await this.deps.lookupByName(action.text) : { match: false as const, say: NO_MATCH_SAY };
+        const result = this.deps.lookupByName ? await this.deps.lookupByName(action.text, action.orderNumber ?? null) : { match: false as const, say: NO_MATCH_SAY };
         return { type: "lookup_done", result };
       }
       case "ring_owner": {

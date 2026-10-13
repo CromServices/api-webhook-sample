@@ -144,7 +144,7 @@ export type FlowAction =
   | { type: "say"; text: string }
   | { type: "lookup"; orderNumber: string; contact: string }
   /** Caller has no order number: find one order by first name + last 3 phone digits (read-only). */
-  | { type: "lookup_by_name"; text: string }
+  | { type: "lookup_by_name"; text: string; /** Confirmed order: only this one may match. */ orderNumber?: string | null }
   | { type: "ring_owner" }
   | { type: "connect_owner" }
   | { type: "text_owner"; body: string }
@@ -423,7 +423,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         if (d.length === 3 && /\b[a-z]{2,}\b/i.test(rest)) {
           return {
             state: { ...heard, phase: "looking_up", misses: 0 },
-            actions: [{ type: "lookup_by_name", text }],
+            actions: [{ type: "lookup_by_name", text, orderNumber: state.orderNumber }],
           };
         }
         const other = d.length >= 4 && d.length <= 6 ? readOrderNumber(text) : null;
@@ -531,6 +531,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
           ],
         };
       }
+      if (result.ambiguous) return handoff({ ...state, told: addOnce(state.told, TOLD.noMatch) }, "no_match");
       const failed = state.failedLookups + 1;
       const told = addOnce(state.told, TOLD.noMatch);
       if (failed >= 2) return handoff({ ...state, failedLookups: failed, told }, "no_match");

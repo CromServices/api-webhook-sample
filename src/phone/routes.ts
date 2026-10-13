@@ -87,7 +87,7 @@ export function mountPhoneLine(
           const r = limitedLookup(o, c, "phone");
           return r === "slow" ? { match: false, say: NO_MATCH_SAY } : r;
         },
-        lookupByName: (text) => (perLine.take("phone") ? lookupByName(orders, text) : { match: false, say: NO_MATCH_SAY }),
+        lookupByName: (text, n) => (perLine.take("phone") ? lookupByName(orders, text, n) : { match: false, say: NO_MATCH_SAY }),
       })
     : null;
 
