@@ -64,7 +64,7 @@ describe("public pages", () => {
   });
 
   it("shows the empty book from storage and leaves technical words out", () => {
-    assert.match(html, /Leads in Facebook: 0\. Rows in your sheet: 0\. Owner alerts: 0\./);
+    assert.match(html, /New leads: 0\. In your sheet: 0/);
     assert.match(html, /No leads yet/);
     assert.match(html, /No rows yet/);
     assert.doesNotMatch(

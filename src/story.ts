@@ -34,6 +34,7 @@ export const STORY = {
   copiedTwice: "Copied twice",
   notInSheet: "Not in your sheet",
   notCopied: "Not copied",
+  priorLine: "From before switch-on, not copied (flagged for later)",
   alertHeading: "New catering enquiry",
   columns: ["Date", "Name", "Phone", "Email", "What they want", "Source form", "Status"] as const,
   nav: [
@@ -45,14 +46,6 @@ export const STORY = {
     { href: "/before-after?view=triage", label: "What we checked" },
   ],
 } as const;
-
-export function checkedLine(facebook: number, rows: number): string {
-  return `Leads in Facebook: ${facebook}. Rows in your sheet: ${rows}.`;
-}
-
-export function countsLine(facebook: number, rows: number, alerts: number): string {
-  return `Leads in Facebook: ${facebook}. Rows in your sheet: ${rows}. Owner alerts: ${alerts}.`;
-}
 
 export function countPhrase(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;

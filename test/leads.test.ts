@@ -8,7 +8,8 @@ import { createApp } from "../src/app.ts";
 import { createGraphStandIn } from "../src/graph.ts";
 import { leadgenBody, metaTime, readLeadgenNotices, tidyLead } from "../src/leadgen.ts";
 import { normaliseAuPhone } from "../src/phone.ts";
-import { humanDate } from "../src/present.ts";
+import { humanDate, leadHeadline } from "../src/present.ts";
+import { STORY } from "../src/story.ts";
 import { FORGED_ID, FORM_ID, FORM_NAME, PAGE_ID, PEOPLE, runBoth } from "../src/scenario.ts";
 import type { State } from "../src/store.ts";
 import { signBody } from "../src/verify.ts";
@@ -19,6 +20,10 @@ const VERIFY = "test-verify-token";
 
 function readState(dataPath: string): State {
   return JSON.parse(readFileSync(dataPath, "utf8")) as State;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function visible(html: string): string {
@@ -587,16 +592,17 @@ describe("the same leads, both ways", () => {
       assert.doesNotMatch(visible(html), /\bsample\b/i, route);
     }
     const compare = pages[4][1];
-    assert.match(compare, new RegExp(`Leads in Facebook: ${before.facebookLeads.length}`));
-    assert.match(compare, new RegExp(`Leads in Facebook: ${after.facebookLeads.length}`));
-    assert.match(compare, new RegExp(`Rows in your sheet: ${before.sheetRows.length}`));
-    assert.match(compare, new RegExp(`Rows in your sheet: ${after.sheetRows.length}`));
-    assert.match(compare, /Owner alerts: 0/);
-    assert.match(compare, new RegExp(`Owner alerts: ${after.alerts.length}`));
+    const beforeHeadline = leadHeadline(before);
+    const afterHeadline = leadHeadline(after);
+    assert.equal(beforeHeadline, "New leads: 3. In your sheet: 2 (1 copied twice, 1 missing)");
+    assert.equal(afterHeadline, "New leads: 3. In your sheet: 3");
+    assert.equal((compare.match(new RegExp(escapeRegExp(beforeHeadline), "g")) ?? []).length, 1);
+    assert.equal((compare.match(new RegExp(escapeRegExp(afterHeadline), "g")) ?? []).length, 1);
+    assert.equal((compare.match(new RegExp(escapeRegExp(STORY.priorLine), "g")) ?? []).length, 2);
+    assert.doesNotMatch(compare, /max-width:1500px/);
     for (const lead of before.facebookLeads) assert.match(compare, new RegExp(lead.name));
     assert.match(compare, /Copied twice/);
     assert.match(compare, /Not in your sheet/);
-    assert.match(compare, /Not copied/);
     assert.match(compare, /Sent again, arrived/);
     assert.match(compare, /Arrived in your sheet/);
     assert.match(compare, /Duplicate stopped/);
@@ -606,8 +612,7 @@ describe("the same leads, both ways", () => {
     const triage = pages[5][1];
     const avery = before.facebookLeads.find((lead) => lead.name === PEOPLE.avery.name);
     assert.ok(avery);
-    assert.match(triage, new RegExp(`Leads in Facebook: ${before.facebookLeads.length}`));
-    assert.match(triage, new RegExp(`Rows in your sheet: ${before.sheetRows.length}`));
+    assert.match(triage, new RegExp(escapeRegExp(beforeHeadline)));
     assert.match(triage, /1 missing from your sheet/);
     assert.match(triage, /1 copied twice/);
     assert.match(triage, /1 slow to arrive/);
@@ -627,16 +632,17 @@ describe("the same leads, both ways", () => {
     assert.match(sheet, />New</);
 
     const alerts = pages[2][1];
-    assert.match(alerts, /Jordan Example/);
-    assert.match(alerts, /Riley Example/);
-    assert.match(alerts, /Casey Example/);
-    assert.doesNotMatch(alerts, /Avery Example/);
+    assert.match(alerts, new RegExp(PEOPLE.jordan.name));
+    assert.match(alerts, new RegExp(PEOPLE.riley.name));
+    assert.match(alerts, new RegExp(PEOPLE.casey.name));
+    assert.doesNotMatch(alerts, new RegExp(PEOPLE.avery.name));
+    assert.doesNotMatch(visible(alerts), /Example/);
     assert.match(alerts, /Owner alerted/);
 
     const happened = pages[3][1];
-    assert.match(happened, /Jordan Example\. Arrived in your sheet\. Owner alerted\./);
-    assert.match(happened, /Riley Example\. Duplicate stopped\./);
-    assert.match(happened, /Casey Example\. Sent again, arrived\. Owner alerted\./);
+    assert.match(happened, new RegExp(`${PEOPLE.jordan.name}\\. Arrived in your sheet\\. Owner alerted\\.`));
+    assert.match(happened, new RegExp(`${PEOPLE.riley.name}\\. Duplicate stopped\\.`));
+    assert.match(happened, new RegExp(`${PEOPLE.casey.name}\\. Sent again, arrived\\. Owner alerted\\.`));
     assert.match(happened, /Turned away, not from Facebook\./);
   });
 });

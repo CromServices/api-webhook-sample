@@ -19,28 +19,28 @@ export type Person = {
 export const PEOPLE = {
   jordan: {
     leadgenId: "1001001001001",
-    name: "Jordan Example",
+    name: "Jordan Hale",
     email: "jordan.example@example.com",
     phoneRaw: "+61 400 000 101",
     want: "Morning tea for 12",
   },
   riley: {
     leadgenId: "1001001001002",
-    name: "Riley Example",
+    name: "Riley Tran",
     email: "riley.example@example.com",
     phoneRaw: "0400000202",
     want: "Lunch for 20",
   },
   casey: {
     leadgenId: "1001001001003",
-    name: "Casey Example",
+    name: "Casey Moore",
     email: "casey.example@example.com",
     phoneRaw: "61 400 000 303",
     want: "Wedding morning tea",
   },
   avery: {
     leadgenId: "1001001001004",
-    name: "Avery Example",
+    name: "Avery Singh",
     email: "avery.example@example.com",
     phoneRaw: "(04) 0000 0404",
     want: "Office lunch for 8",

@@ -1,9 +1,4 @@
-import {
-  checkedLine,
-  countPhrase,
-  countsLine,
-  STORY,
-} from "./story.ts";
+import { countPhrase, STORY } from "./story.ts";
 import type { Attempt, FacebookLead, Picture, SheetRow } from "./store.ts";
 
 export type Chip = {
@@ -27,9 +22,15 @@ export type SheetLine = {
   chips: Chip[];
 };
 
+export type PriorLine = {
+  name: string;
+  text: string;
+};
+
 export type ColumnView = {
   headline: string;
   facebook: PersonLine[];
+  prior: PriorLine[];
   sheet: SheetLine[];
   notes: string[];
 };
@@ -96,17 +97,37 @@ function sheetChips(picture: Picture, row: SheetRow): Chip[] {
   return chipsFor(picture, lead).filter((chip) => chip.text !== STORY.notCopied && chip.text !== STORY.notInSheet);
 }
 
+/** New leads since switch-on, against how many of those people are in the sheet. */
+export function leadHeadline(picture: Picture): string {
+  const current = picture.facebookLeads.filter((lead) => !lead.prior);
+  const rowsOf = (id: string) => sheetCount(picture, id);
+  const inSheet = current.filter((lead) => rowsOf(lead.leadgenId) >= 1).length;
+  const faults: string[] = [];
+  const twice = current.filter((lead) => rowsOf(lead.leadgenId) >= 2).length;
+  const missing = current.filter((lead) => rowsOf(lead.leadgenId) === 0).length;
+  if (twice > 0) faults.push(countPhrase(twice, "copied twice", "copied twice"));
+  if (missing > 0) faults.push(countPhrase(missing, "missing", "missing"));
+  const extra = faults.length > 0 ? ` (${faults.join(", ")})` : "";
+  return `New leads: ${current.length}. In your sheet: ${inSheet}${extra}`;
+}
+
+export const EMPTY_HEADLINE = "New leads: 0. In your sheet: 0";
+
 export function present(picture: Picture): ColumnView {
   const notes = picture.attempts
     .filter((row) => row.outcome === "rejected")
     .map(() => STORY.turnedAway);
+  const current = picture.facebookLeads.filter((lead) => !lead.prior);
   return {
-    headline: countsLine(picture.facebookLeads.length, picture.sheetRows.length, picture.alerts.length),
-    facebook: picture.facebookLeads.map((lead) => ({
+    headline: leadHeadline(picture),
+    facebook: current.map((lead) => ({
       name: lead.name,
       want: lead.want,
       chips: chipsFor(picture, lead),
     })),
+    prior: picture.facebookLeads
+      .filter((lead) => lead.prior && sheetCount(picture, lead.leadgenId) === 0)
+      .map((lead) => ({ name: lead.name, text: STORY.priorLine })),
     sheet: picture.sheetRows.map((row) => ({
       date: humanDate(row.createdTime),
       name: row.name,
@@ -128,7 +149,7 @@ function leadLine(lead: FacebookLead): string {
 /** Plain triage of one stored run. Every count and name is read from that run. */
 export function triageFrom(picture: Picture | null): TriageView {
   if (!picture) {
-    return { checked: checkedLine(0, 0), found: [], fixed: [], later: [] };
+    return { checked: EMPTY_HEADLINE, found: [], fixed: [], later: [] };
   }
   const current = picture.facebookLeads.filter((lead) => !lead.prior);
   const older = picture.facebookLeads.filter((lead) => lead.prior);
@@ -177,7 +198,7 @@ export function triageFrom(picture: Picture | null): TriageView {
         `${lead.name}, ${lead.want}, ${humanDate(lead.createdTime)}, was already in Facebook before the switch-on and was not copied.`,
     );
   return {
-    checked: checkedLine(picture.facebookLeads.length, picture.sheetRows.length),
+    checked: leadHeadline(picture),
     found,
     fixed,
     later,

@@ -1,5 +1,6 @@
 import { CROM_FOOTER, CROM_HEADER, THEME_CSS_URL } from "./landing.ts";
 import {
+  EMPTY_HEADLINE,
   historyLines,
   humanDate,
   present,
@@ -9,7 +10,7 @@ import {
   type SheetLine,
   type TriageView,
 } from "./present.ts";
-import { countsLine, STORY } from "./story.ts";
+import { STORY } from "./story.ts";
 import type { Picture, Snapshot } from "./store.ts";
 
 function esc(value: string): string {
@@ -33,14 +34,7 @@ function nav(): string {
     .join("")}</p>`;
 }
 
-function shell(body: string, wide = false): string {
-  const main = wide ? '<main class="crom-shell" style="max-width:1500px">' : '<main class="crom-shell">';
-  const footer = wide
-    ? CROM_FOOTER.replace(
-        '<footer class="crom-footer">',
-        '<footer class="crom-footer" style="margin-top:16px">',
-      )
-    : CROM_FOOTER;
+function shell(body: string): string {
   return `<!doctype html>
 <html lang="en-AU">
 <head>
@@ -51,9 +45,9 @@ function shell(body: string, wide = false): string {
 </head>
 <body>
 ${CROM_HEADER}
-${main}
+<main class="crom-shell">
 ${body}
-${footer}
+${CROM_FOOTER}
 </main>
 </body>
 </html>`;
@@ -87,7 +81,16 @@ function sheetSummary(line: SheetLine): string {
   </div>`;
 }
 
-function column(title: string, view: ColumnView): string {
+function priorLines(view: ColumnView): string {
+  return view.prior
+    .map(
+      (line) =>
+        `<p style="margin:8px 0 0;font-size:14px;">${esc(line.name)}. ${esc(line.text)}</p>`,
+    )
+    .join("");
+}
+
+function column(title: string, view: ColumnView, stacked = false): string {
   const facebook =
     view.facebook.length === 0
       ? `<p class="crom-note" style="margin:8px 0 0;">${esc(STORY.none)}</p>`
@@ -99,19 +102,29 @@ function column(title: string, view: ColumnView): string {
   const notes = view.notes
     .map((line) => `<p style="margin:8px 0 0;"><span class="crom-chip">${esc(line)}</span></p>`)
     .join("");
+  const lists = stacked
+    ? `<div style="margin-top:6px;">
+        <h3 class="crom-h3">${esc(STORY.facebook)}</h3>
+        ${facebook}
+        ${priorLines(view)}
+        <h3 class="crom-h3" style="margin-top:8px;">${esc(STORY.sheet)}</h3>
+        ${sheet}
+      </div>`
+    : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:6px;">
+        <div>
+          <h3 class="crom-h3">${esc(STORY.facebook)}</h3>
+          ${facebook}
+        </div>
+        <div>
+          <h3 class="crom-h3">${esc(STORY.sheet)}</h3>
+          ${sheet}
+        </div>
+      </div>
+      ${priorLines(view)}`;
   return `<section style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;">
     <h2 class="crom-h3">${esc(title)}</h2>
     <p style="font-weight:600;margin:4px 0 0;font-size:15px;">${esc(view.headline)}</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:6px;">
-      <div>
-        <h3 class="crom-h3">${esc(STORY.facebook)}</h3>
-        ${facebook}
-      </div>
-      <div>
-        <h3 class="crom-h3">${esc(STORY.sheet)}</h3>
-        ${sheet}
-      </div>
-    </div>
+    ${lists}
     ${notes}
   </section>`;
 }
@@ -202,7 +215,7 @@ export function happenedPage(picture: Picture): string {
 
 function shot(snapshot: Snapshot | null): ColumnView {
   if (!snapshot) {
-    return { headline: countsLine(0, 0, 0), facebook: [], sheet: [], notes: [] };
+    return { headline: EMPTY_HEADLINE, facebook: [], prior: [], sheet: [], notes: [] };
   }
   return present(snapshot);
 }
@@ -250,12 +263,9 @@ export function comparePage(before: Snapshot | null, after: Snapshot | null, vie
     ${triageBody(triageFrom(before))}
   </section>`);
   }
-  return shell(
-    `${intro(STORY.sideBySide)}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
-    ${column(STORY.before, shot(before))}
-    ${column(STORY.after, shot(after))}
-  </div>`,
-    true,
-  );
+  return shell(`${intro(STORY.sideBySide)}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;">
+    ${column(STORY.before, shot(before), true)}
+    ${column(STORY.after, shot(after), true)}
+  </div>`);
 }
