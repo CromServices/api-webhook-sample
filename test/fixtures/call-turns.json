@@ -133,5 +133,40 @@
   "text": "Yeah, you've missed it a few times now. It's uh, [spoken mobile masked]",
   "issue": "misheard",
   "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
+ },
+ {
+  "call": "call-4",
+  "t": 7.83,
+  "text": "Hello?",
+  "issue": "ok",
+  "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+ },
+ {
+  "call": "call-4",
+  "t": 17.42,
+  "text": "Uh, it's a thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?"
+ },
+ {
+  "call": "call-4",
+  "t": 23.51,
+  "text": "Yes.",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?"
+ },
+ {
+  "call": "call-4",
+  "t": 35.29,
+  "text": "Uh, [spoken mobile masked]",
+  "issue": "misheard",
+  "lineReply": "Sorry, I couldn't match that to order one-oh-four-two. What's the mobile or email on it? Or your first name and the last three digits of your phone?"
+ },
+ {
+  "call": "call-4",
+  "t": 52.09,
+  "text": "Uh, just use crom services at g mail dot com dot A U",
+  "issue": "misheard",
+  "lineReply": "I still couldn't match those details, so I'll put you through to Sam."
  }
 ]
