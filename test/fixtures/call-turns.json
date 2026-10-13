@@ -238,5 +238,47 @@
   "text": "You nearly got there. Yeah, uh, best to send me to Sam so I can create another order.",
   "issue": "misheard",
   "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
+ },
+ {
+  "call": "call-6",
+  "t": 13.89,
+  "text": "Hello? [quiet 1201 ms before reply]",
+  "issue": "ok",
+  "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+ },
+ {
+  "call": "call-6",
+  "t": 23,
+  "text": "A thousand and forty-two [quiet 1201 ms before reply]",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?"
+ },
+ {
+  "call": "call-6",
+  "t": 29.09,
+  "text": "Yep. [quiet 1200 ms before reply]",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?"
+ },
+ {
+  "call": "call-6",
+  "t": 41.72,
+  "text": "Uh yeah, 0 4 9 1 5 7 0 1 1 0 zero 1 5 6 [quiet 1200 ms before reply]",
+  "issue": "ok",
+  "lineReply": "Your order is on its way to you."
+ },
+ {
+  "call": "call-6",
+  "t": 62.11,
+  "text": "Yeah, can I raise another order? I'd like some coffees, uh, two dogs. I've got some, some extra work here as well for Sam, maybe some plumbing, uh, some fixes that I need to do on the house. [quiet 0 ms before reply]",
+  "issue": "ok",
+  "lineReply": "I can't take new orders or other requests on this line, but I can take a message for Sam. Want me to?"
+ },
+ {
+  "call": "call-6",
+  "t": 73.19,
+  "text": "Yes please. [quiet 1220 ms before reply]",
+  "issue": "ok",
+  "lineReply": "No worries, I'll pass you to Sam's voicemail so you can get a call back."
  }
 ]
