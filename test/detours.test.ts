@@ -128,10 +128,10 @@ describe("phone line: detours", () => {
     assert.ok(said.includes(LINES.handoffMessage));
     assert.equal(rang, 1);
   });
-  it("off-topic: brief answer and the question again, then offers Sam", async () => {
+  it("off-topic: offers a message (no re-prompt glued on), then passes to Sam", async () => {
     const { said, rang } = await call(["Do you sell gift cards for birthdays?", "What about catering for a party?", "And do you have parking out the front?"]);
-    assert.ok(said[1]!.startsWith(LINES.offTopic));
-    assert.ok(said.includes(LINES.handoffNotHeard));
+    assert.equal(said[1], LINES.offTopic);
+    assert.ok(said.includes(LINES.handoffMessage));
     assert.equal(rang, 1);
   });
   it("change requests are still handed over, never done", async () => {

@@ -15,7 +15,7 @@ export type CallLogEntry = CallSummary & {
   recordingUrl?: string | null;
   recordingSeconds?: number | null;
   /** Turn-taking timings for tuning (join wait, reply gap). Not shown. */
-  timings?: { joinWaitMsAvg: number | null; replyMsAvg: number | null; turns: number };
+  timings?: { joinWaitMsAvg: number | null; replyMsAvg: number | null; turns: number; bargeInMsAvg?: number | null; bargeIns?: number };
   /** Seconds the voice provider was connected (for spend). Not shown. */
   voiceSeconds?: number;
 };

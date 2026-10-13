@@ -194,6 +194,15 @@ export class XaiVoiceProvider implements VoiceProvider {
             });
           });
         },
+        stop() {
+          if (current && ours.has(current.id)) {
+            ours.delete(current.id);
+            dropped.add(current.id);
+            current = null;
+            send({ type: "response.cancel" });
+            waiting.shift()?.();
+          }
+        },
         async end() {
           if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
         },

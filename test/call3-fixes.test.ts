@@ -136,8 +136,10 @@ describe("order requests: the line never places orders, it passes them to Sam", 
     const s = session(said, log);
     await s.start(FICTION);
     await s.heard("Can you get Sam to order me something else?");
-    assert.ok(said.at(-1)!.startsWith(LINES.orderRequest));
-    assert.equal(s.phase, "ask_order");
+    assert.equal(said.at(-1), LINES.otherRequest);
+    assert.equal(s.phase, "offer_message");
+    await s.heard("no thanks");
+    assert.equal(said.at(-1), "No problem. What's the order number?");
     await s.heard("one oh four two");
     await s.heard("0491 570 156");
     await s.heard("no thanks");

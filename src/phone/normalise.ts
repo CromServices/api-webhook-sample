@@ -85,6 +85,10 @@ export function normaliseAuPhone(input: string): string | null {
   if (typeof input !== "string" || input.length > 80) return null;
   let raw = /[a-z]/i.test(input) ? spokenDigits(input) : input.replace(/[^\d+]/g, "");
   if (raw.startsWith("+")) raw = raw.slice(1);
+  // Repeated start ("0491 ... 0491 570 156"): drop the duplicated leading run.
+  for (let k = Math.min(6, Math.floor(raw.length / 2)); k >= 2 && raw.length > 10; k -= 1) {
+    if (raw.slice(0, k) === raw.slice(k, 2 * k)) raw = raw.slice(k);
+  }
   if (raw.startsWith("0061")) raw = raw.slice(4);
   else if (raw.startsWith("61") && raw.length >= 11) raw = raw.slice(2);
   else if (raw.startsWith("0")) raw = raw.slice(1);

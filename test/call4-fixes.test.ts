@@ -40,7 +40,7 @@ describe("call 4 fix 1: a hello landing on the greeting is ignored (no restart)"
     p.ev!.onHeard("Hello?"); await wait(400);
     assert.deepEqual(p.said, [LINES.greet]);
     assert.ok(!ws.sent.some((m) => m.event === "clear"));
-    p.ev!.onHeard("one oh four two"); await wait(250);
+    p.ev!.onHeard("one oh four two"); await wait(600);
     assert.equal(p.said.at(-1), LINES.askContact);
     ws.close();
   });
@@ -62,20 +62,9 @@ describe("call 4 fix 2: outbound greets when the person first speaks, else after
   });
 });
 
-describe("call 4 fix 4: answer complete answers without the full join wait", () => {
-  it("complete order number, yes, full contact: replies within the quick window", async () => {
-    const { p, ws } = bridge({ joinMs: 900, quickJoinMs: 50 });
-    await wait(30);
-    for (const [say, expect] of [["a thousand and forty-two", LINES.confirmOrder("1042")], ["Yes.", LINES.askContact]] as const) {
-      const t = Date.now(); p.ev!.onHeard(say); await wait(200);
-      assert.equal(p.said.at(-1), expect); assert.ok(p.at.at(-1)! - t < 300, `${say} answered fast`);
-    }
-    const t = Date.now(); p.ev!.onHeard("0491 570 156"); await wait(200);
-    assert.ok(p.said.some((x) => /on its way/i.test(x))); assert.ok(p.at.at(-2)! - t < 300);
-    ws.close();
-  });
+describe("call 4 fix 4 (revised after call 5): wait for real quiet, never a short join", () => {
   it("incomplete pieces still wait (no reply to 'a thousand and' or a part number)", async () => {
-    const { p, ws } = bridge({ joinMs: 300, quickJoinMs: 20, digitJoinMs: 600 });
+    const { p, ws } = bridge({ joinMs: 300, digitJoinMs: 600 });
     await wait(30);
     p.ev!.onHeard("a thousand and"); await wait(100);
     assert.deepEqual(p.said, [LINES.greet]);

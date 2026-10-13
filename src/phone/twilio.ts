@@ -7,7 +7,6 @@ import { OWNER_NAME } from "./flow.ts";
 import type { LookupResult } from "./lookup.ts";
 import { normaliseAuPhone, spokenDigits } from "./normalise.ts";
 import { ASKED, HELLO_ONLY, ORDER_REQUEST } from "./flow.ts";
-import { normaliseContact, readOrderNumber } from "./normalise.ts";
 import { CallSession, TEXTS_NOT_SET_UP, type TextSender } from "./session.ts";
 import type { VoiceProvider, VoiceSession } from "./voice/provider.ts";
 
@@ -50,8 +49,10 @@ export type TwilioOptions = {
   helloWaitMs?: number;
   /** Transcribe a voicemail with the line's own speech-to-text (Twilio's paid transcription stays off). */
   transcribeVoicemail?: (wav: Buffer) => Promise<string>;
-  /** Join window once the answer already looks complete for the question (default 150 ms). */
-  quickJoinMs?: number;
+  /** Quiet needed before replying (default 1200 ms). joinMs is the older name. */
+  endSilenceMs?: number;
+  /** Caller-audio energy that counts as speech (mean |linear| per 20 ms frame, default 400). */
+  vadThreshold?: number;
   /** Join window once the caller has started reading out a phone number (default 2000 ms). */
   digitJoinMs?: number;
   /** Print a timed transcript to the server log (test calls only). */
@@ -276,6 +277,13 @@ export type BridgeOptions = TwilioOptions & {
 };
 
 /** One phone call: Twilio media stream <-> voice provider <-> call flow. */
+/** G.711 μ-law byte -> 16-bit linear. */
+const MULAW = Int16Array.from({ length: 256 }, (_, i) => {
+  const u = ~i & 0xff;
+  const t = (((u & 0x0f) << 3) + 0x84) << ((u & 0x70) >> 4);
+  return u & 0x80 ? 0x84 - t : t - 0x84;
+});
+
 export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let streamSid = "";
   let callSid = "";
@@ -289,20 +297,25 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let chain: Promise<void> = Promise.resolve();
   let voiceStarted = 0;
   const silenceMs = opts.silenceMs ?? 8000;
-  // xAI ends a turn at a short pause, which splits "oh four... triple three" into pieces.
-  // Hold each piece briefly and join it with the next if the caller keeps talking.
-  const joinMs = opts.joinMs ?? 900;
-  const maxHoldMs = 4000;
+  // Turn end is ours, not xAI's: reply only after real silence on the caller's own audio
+  // (about 1.2 s, or 2 s while reading out a number), and never while they are talking.
+  const endSilenceMs = opts.endSilenceMs ?? opts.joinMs ?? 1200;
+  const digitJoinMs = opts.digitJoinMs ?? 2000;
+  const maxHoldMs = 12_000;
   let pending: string[] = [];
   let lastPieceAt = 0;
+  let firstPieceAt = 0;
   let heardAt = 0;
   let awaitingReply = false;
   const joinWaits: number[] = [];
   const replyGaps: number[] = [];
+  const bargeIns: number[] = [];
   let speaking = false;
-  /** The line is playing a question the caller may talk over (barge-in flag). */
-  let playingInterruptible = false;
-  const digitJoinMs = opts.digitJoinMs ?? 2000;
+  /** Caller voice activity from the Twilio audio (energy VAD). */
+  let lastVoiceAt = 0;
+  let voicedFrames = 0;
+  let onsetAt = 0;
+  const vadThreshold = opts.vadThreshold ?? 400;
   /** Mid phone number: digits started in ask_contact but fewer than 10 so far. */
   const midNumber = () => {
     if (session?.phase !== "ask_contact") return false;
@@ -312,63 +325,84 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     return n >= 1 && n < 10;
   };
   let joinTimer: NodeJS.Timeout | null = null;
-  let holdTimer: NodeJS.Timeout | null = null;
   let waitingForHello = false;
   let startFlow: (() => void) | null = null;
-  const quickJoinMs = opts.quickJoinMs ?? 150;
   let greetingAt = 0;
-  /** The pieces so far already answer the question: no need to wait the full join window. */
-  const complete = () => {
-    const text = pending.join(" ");
-    switch (session?.phase) {
-      case "ask_order":
-        return !!readOrderNumber(text) && !/\b(and|a|thousand|hundred)\W*$/i.test(text);
-      case "confirm_order":
-        return /^\W*(yes|yeah|yep|yup|no|nope|nah|correct|that's right)\W*$/i.test(text);
-      case "ask_contact":
-        return !!normaliseContact(text);
-      default:
-        return false;
-    }
+  /** Stop the line the instant the caller starts talking (barge-in, any line). */
+  const stopPlayback = (why: string) => {
+    if (!speaking || !opts.bargeIn) return;
+    sendTwilio({ event: "clear", streamSid });
+    voice?.stop?.();
+    for (const done of marks.values()) done();
+    marks.clear();
+    const ms = onsetAt ? Date.now() - onsetAt : 0;
+    bargeIns.push(ms);
+    note("caller", `(talking: line stopped, ${why}, ${ms} ms after speech onset)`);
+  };
+  const callerSpeechStarted = (why: string) => {
+    clearSilence();
+    stopPlayback(why);
   };
   const flush = () => {
     if (joinTimer) clearTimeout(joinTimer);
-    if (holdTimer) clearTimeout(holdTimer);
-    joinTimer = holdTimer = null;
+    joinTimer = null;
     if (!pending.length) return;
     const text = pending.join(" ");
     pending = [];
+    firstPieceAt = 0;
     // A bare "hello" landing on the greeting (first turn): let the greeting finish; don't restart it.
     if (joinWaits.length === 0 && HELLO_ONLY.test(text) && (speaking || Date.now() - greetingAt < 6000)) {
-      note("caller", `${text} (hello during the greeting: ignored, greeting carries on)`);
+      note("caller", `${text} (hello during the greeting: ignored)`);
       return;
     }
-    const waited = Date.now() - lastPieceAt;
+    const waited = Date.now() - Math.max(lastPieceAt, lastVoiceAt);
     joinWaits.push(waited);
     heardAt = Date.now();
     awaitingReply = true;
-    note("caller", `${text} [join wait ${waited} ms]`);
-    // Answer now rather than queue behind a question the caller has already answered.
-    if (speaking && playingInterruptible) {
-      note("caller", "(answered over a question: playback cleared)");
-      sendTwilio({ event: "clear", streamSid });
-      for (const done of marks.values()) done();
-      marks.clear();
-    }
+    note("caller", `${text} [quiet ${waited} ms before reply]`);
+    stopPlayback("turn taken");
     void run((s) => s.heard(text));
   };
+  /** Reply only once the caller has been quiet long enough; re-check until then. */
+  const checkTurn = () => {
+    if (joinTimer) clearTimeout(joinTimer);
+    joinTimer = null;
+    if (!pending.length) return;
+    const need = midNumber() ? Math.max(endSilenceMs, digitJoinMs) : endSilenceMs;
+    const quiet = Date.now() - Math.max(lastPieceAt, lastVoiceAt);
+    if (quiet >= need || Date.now() - firstPieceAt >= maxHoldMs) return flush();
+    joinTimer = setTimeout(checkTurn, Math.max(20, need - quiet));
+  };
+  const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   const heardPiece = (text: string) => {
     if (waitingForHello) {
       note("caller", `${text} (hello, before the greeting)`);
       startFlow?.();
       return;
     }
-    pending.push(text);
+    // Speech-to-text can resend a piece with more on the end ("It's 0 4 9 1" then "It's 0 4 9 1 5 7 ..."): keep the longer.
+    const last = pending.at(-1);
+    if (last !== undefined && norm(text).startsWith(norm(last))) pending[pending.length - 1] = text;
+    else if (last !== undefined && norm(last).startsWith(norm(text))) {
+      /* already have it */
+    } else pending.push(text);
+    if (pending.length === 1 && !firstPieceAt) firstPieceAt = Date.now();
     lastPieceAt = Date.now();
-    if (joinTimer) clearTimeout(joinTimer);
-    const reading = midNumber();
-    joinTimer = setTimeout(flush, reading ? Math.max(joinMs, digitJoinMs) : complete() ? Math.min(joinMs, quickJoinMs) : joinMs);
-    if (!holdTimer) holdTimer = setTimeout(flush, reading ? maxHoldMs + digitJoinMs : maxHoldMs);
+    checkTurn();
+  };
+  const voiceFrame = (b64: string) => {
+    const bytes = Buffer.from(b64, "base64");
+    if (!bytes.length) return;
+    let sum = 0;
+    for (const b of bytes) sum += Math.abs(MULAW[b]!);
+    if (sum / bytes.length > vadThreshold) {
+      voicedFrames += 1;
+      if (voicedFrames === 1) onsetAt = Date.now();
+      if (voicedFrames >= 2) {
+        lastVoiceAt = Date.now();
+        if (voicedFrames === 2) callerSpeechStarted("caller audio");
+      }
+    } else voicedFrames = 0;
   };
   // Off by default. PHONE_TRANSCRIPT_LOG=1 prints a timed transcript for test calls only.
   const trace = opts.transcriptLog ?? false;
@@ -388,7 +422,11 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   const armSilence = () => {
     clearSilence();
     if (ended || session?.phase === "done") return;
-    silenceTimer = setTimeout(() => run((s) => s.silence()), silenceMs);
+    silenceTimer = setTimeout(() => {
+      // Still talking (or just stopped): not silence.
+      if (Date.now() - Math.max(lastVoiceAt, lastPieceAt) < silenceMs || pending.length) return armSilence();
+      void run((s) => s.silence());
+    }, silenceMs);
   };
   const run = (fn: (s: CallSession) => Promise<void>) => {
     chain = chain.then(async () => {
@@ -416,7 +454,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     if (callSid) {
       opts.callLog.update(callSid, {
         ...(secs ? { voiceSeconds: secs } : {}),
-        timings: { joinWaitMsAvg: avg(joinWaits), replyMsAvg: avg(replyGaps), turns: joinWaits.length },
+        timings: { joinWaitMsAvg: avg(joinWaits), replyMsAvg: avg(replyGaps), turns: joinWaits.length, bargeInMsAvg: avg(bargeIns), bargeIns: bargeIns.length },
       });
     }
     void voice?.end();
@@ -478,20 +516,13 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
               heardPiece(text);
             },
             onInterrupted() {
-              note("caller", "(talked over the line: playback cleared)");
-              sendTwilio({ event: "clear", streamSid });
-              for (const done of marks.values()) done();
-              marks.clear();
+              stopPlayback("speech-to-text");
             },
             onSpeechStarted() {
-              clearSilence();
+              callerSpeechStarted("speech-to-text");
               // Outbound: greet once the person has said hello (speech start + a beat).
               if (waitingForHello && startFlow) setTimeout(() => startFlow?.(), 700);
-              // Still talking: wait for the rest before answering.
-              if (joinTimer) {
-                clearTimeout(joinTimer);
-                joinTimer = null;
-              }
+              lastVoiceAt = Date.now();
             },
             onError(m) {
               console.error("phone line: voice error", m);
@@ -513,14 +544,12 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
             say: async (text) => {
               bytes = 0;
               note("line", text);
-              // Barge-in (flag): only questions can be talked over, so answers and handovers always play.
-              const interruptible = !!opts.bargeIn && /\?\s*$/.test(text);
+              // Barge-in (flag): every line can be talked over, and the caller's audio is never dropped.
+              const interruptible = !!opts.bargeIn;
               speaking = true;
-              playingInterruptible = interruptible;
               await voice!.say(text, { interruptible });
               await playMark(bytes);
               speaking = false;
-              playingInterruptible = false;
             },
             ringOwner: async () => {
               opts.onAfter(callSid, "handover");
@@ -563,7 +592,10 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
       }
       case "media":
         if (msg.media?.track && msg.media.track !== "inbound") return;
-        if (typeof msg.media?.payload === "string") voice?.sendAudio(msg.media.payload);
+        if (typeof msg.media?.payload === "string") {
+          voiceFrame(msg.media.payload);
+          voice?.sendAudio(msg.media.payload);
+        }
         return;
       case "mark": {
         const name = String(msg.mark?.name ?? "");

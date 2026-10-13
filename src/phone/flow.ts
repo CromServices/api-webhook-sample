@@ -46,7 +46,8 @@ export const LINES = {
   handoffChange: `I can't change orders myself, but ${OWNER_NAME} can. I'll put you through now.`,
   handoffPerson: `No problem, I'll put you through to ${OWNER_NAME} now.`,
   handoffNoMatch: `That still doesn't match the details on the order, so I'll put you through to ${OWNER_NAME}.`,
-  handoffNotHeard: `I'm having trouble hearing you, so I'll put you through to ${OWNER_NAME}.`,
+  /** Never blames the caller (or their phone). */
+  handoffNotHeard: `Let me put you through to ${OWNER_NAME}, who can help.`,
   connecting: `${OWNER_NAME}'s picking up now. Putting you through.`,
   noAnswer: `${OWNER_NAME} can't get to the phone right now. Please leave a short message after this, with your name, and ${OWNER_NAME} will call you back.`,
   messageTaken: `Thanks, I've passed that on to ${OWNER_NAME}, who'll call you back. Bye for now.`,
@@ -57,7 +58,10 @@ export const LINES = {
   confirmAgain: "Okay. What's the order number? One digit at a time is easiest.",
   noNumber: `No problem. Tell me the name on the order and the last three digits of your phone number. Or say "message" to leave ${OWNER_NAME} a message.`,
   askNameAgain: "Sorry, I didn't get that. What's the first name on the order, and the last three digits of your phone?",
-  offTopic: `Sorry, I can only help with orders on this line, but I can take a message for ${OWNER_NAME}.`,
+  offTopic: `Sorry, I can only check orders on this line, but I can take a message for ${OWNER_NAME}. Want me to?`,
+  /** New orders, buying, or anything that isn't checking an order: offer a message, never a re-prompt. */
+  otherRequest: `I can't take new orders or other requests on this line, but I can take a message for ${OWNER_NAME}. Want me to?`,
+  offerAgain: `Shall I take a message for ${OWNER_NAME}? Just yes or no.`,
   handoffComplaint: `Sorry about that. ${OWNER_NAME} can sort it out, so I'll put you through.`,
   statusAsk: "Sure, I can check that. What's the order number?",
   confirmYesNo: (n: string) => `Is that order ${sayDigits(n)}? Just yes or no.`,
@@ -94,6 +98,7 @@ export type Phase =
   | "ask_contact"
   | "looking_up"
   | "told"
+  | "offer_message"
   | "ringing_owner"
   | "take_message"
   | "done";
@@ -113,6 +118,8 @@ export type FlowState = {
   message: string | null;
   textedOwner: boolean;
   flags?: FlowFlags;
+  /** Where to go back to if the caller says no to leaving a message. */
+  returnPhase?: Phase;
   /** True once anything has been heard from the caller. */
   heardAny?: boolean;
   /** Last sentence spoken, so it is never said twice in a row. */
@@ -179,14 +186,14 @@ export type Intent =
 
 /** Wants to place a (new) order. The line never places orders; it passes the request to Sam. */
 export const ORDER_REQUEST =
-  /\b(order me|orders? (me )?something|place (an|a|a new|another) order|make (an|a|another) order|put (in|through) (an|a|another) order|new order|(can|could|may) i (order|get an order)|(i'?d|i would|i'?ll|i want to|i wanna|want to|wanna) (like to )?order\b|(get|have) (sam|him|her|someone) (to )?order|take (an|my) order)\b/i;
+  /\b((raise|create|start|open|do|make|place|put in|book) (an|a|another|a new|one more|new)( \w+)? (order|one)|another order|new one|(i'?d|i would|i want to|i wanna|want to|wanna|can i|could i|i'?d like to|like to|need to) (buy|purchase|get|book)\b|buy (something|some|a|an|another|more|stuff)|(\d+|two|three|four|five|six|seven|eight|nine|ten|a dozen) (coffees|pizzas?|dogs?|puppies|items)|pizza|dogs?|puppy|plumb(ing|er)|electrician|tradie|repairs?|order me|orders? (me )?something|place (an|a|a new|another) order|make (an|a|another) order|put (in|through) (an|a|another) order|new order|(can|could|may) i (order|get an order)|(i'?d|i would|i'?ll|i want to|i wanna|want to|wanna) (like to )?order\b|(get|have) (sam|him|her|someone) (to )?order|take (an|my) order)\b/i;
 
 const CHANGE =
   /\b(change|changing|cancel+(ing|ed)?|refund|swap|switch|modify(ing)?|amend|edit|updat(e|ing)|instead|different address|add (a|an|another|one|some)|remove|take off|scrap (that|it|my)|don'?t (need|want) (it|that|the order)|money back)\b/i;
 const COMPLAINT =
   /\b(wrong|missing|forgot(ten)?|left out|didn'?t (get|receive|come|arrive)|never (got|arrived|came)|hasn'?t (arrived|come)|not (arrived|received|here)|broken|damaged|crushed|incomplete|reimburs\w*|spilt|spilled|stone cold|cold|complain(t)?|problem|issue|not happy|terrible|disgusting|report)\b/i;
 const PERSON =
-  /\b(talk|speak|chat|yarn)\b[^.?!]*\b(someone|somebody|person|human|sam|owner|staff|manager|real|anyone|boss|agent|service|support)\b|\b(real person|a human|operator|representative|put me (through|onto|on to)|call me back|give me a (bell|call|ring)|talk to sam|speak to sam|is sam (around|there|in)|customer (service|support|care)|client (service|support)|(contact|call|email|reach|ring) (the )?(owner|boss|sam|agent|support|staff|someone)|live agent|human agent|an agent)\b/i;
+  /\b(talk|speak|chat|yarn)\b[^.?!]*\b(someone|somebody|person|human|sam|owner|staff|manager|real|anyone|boss|agent|service|support)\b|\b(real person|a human|operator|representative|put me (through|onto|on to)|call me back|give me a (bell|call|ring)|talk to sam|speak to sam|is sam (around|there|in)|customer (service|support|care)|client (service|support)|(contact|call|email|reach|ring) (the )?(owner|boss|sam|agent|support|staff|someone)|live agent|human agent|an agent|(send|put|get|transfer) me (to|through to|onto|on to) (sam|the owner|someone|a person))\b/i;
 const MESSAGE = /\b(leave (a |him |her |them )?(message|voicemail)|voicemail|take a message|message)\b/i;
 const HOURS = /\b(open|opening|close|closing|shut|hours|what time (do|are|does)|when do you|trading)\b/i;
 const LOCATION =
@@ -202,7 +209,7 @@ const YES = /^\s*(yes|yeah|yep|yup|sure|please(?! \w+ the)|correct|right|exactly
 
 export function detectIntent(text: string): Intent {
   if (NO_NUMBER.test(text)) return "no_number";
-  if (ORDER_REQUEST.test(text) && !/\b(my|the|that|this) order\b/i.test(text.replace(ORDER_REQUEST, ""))) return "order_request";
+  if (ORDER_REQUEST.test(text) && !/\b(check|track|status|where|update on)\b/i.test(text) && !/\b(my|the|that|this) order\b/i.test(text.replace(ORDER_REQUEST, ""))) return "order_request";
   if (CHANGE.test(text)) return "change";
   if (COMPLAINT.test(text)) return "complaint";
   if (PERSON.test(text)) return "person";
@@ -321,6 +328,21 @@ const REPROMPT: Partial<Record<Phase, string>> = {
 export const HELLO_ONLY =
   /^\W*(hello|hi|hey|hiya|g'?day|yeah|yes|hello,? (hello|who'?s (this|that)|who is (this|it))|who'?s (this|calling)|who is this)\W*(\W+(hello|hi|yeah|there))*\W*$/i;
 
+/** The bare question for a phase: no "sorry", so nothing stacks. */
+const QUESTION: Partial<Record<Phase, string>> = {
+  ask_order: "What's the order number?",
+  confirm_order: "Was that the right order number?",
+  ask_name: "What's the first name on the order, and the last three digits of your phone?",
+  ask_contact: "What's the mobile or email on the order?",
+  told: "Is there anything else I can help with?",
+};
+
+/** A refusal or new request: offer a message for Sam (yes or silence -> voicemail, no -> back). */
+function offerMessage(state: FlowState, back: Phase, line: string) {
+  const returnPhase = back === "offer_message" ? state.returnPhase ?? "ask_order" : back;
+  return { state: { ...state, phase: "offer_message" as const, returnPhase, misses: 0 }, actions: [{ type: "say" as const, text: line }] };
+}
+
 /** A number heard: read it back first if it could have been misheard, else go on. */
 function gotNumber(state: FlowState, reading: { number: string; sure: boolean }) {
   const next = { ...state, orderNumber: reading.number, misses: 0, asked: addOnce(state.asked, ASKED.status) };
@@ -388,7 +410,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         if (state.silences >= 1) return handoff({ ...state, silences: 0 }, "not_heard");
         return {
           state: { ...state, silences: state.silences + 1 },
-          actions: [{ type: "say", text: `${LINES.stillThere} ${REPROMPT[state.phase] ?? ""}`.trim() }],
+          actions: [{ type: "say", text: `${LINES.stillThere} ${QUESTION[state.phase] ?? ""}`.trim() }],
         };
       }
       if (event.type !== "heard") return { state, actions: [] };
@@ -447,8 +469,7 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
 
       const intent = detectIntent(text);
       if (intent === "order_request") {
-        const noted = { ...heard, asked: addOnce(heard.asked, ASKED.orderRequest) };
-        return reprompt(noted, LINES.orderRequest);
+        return offerMessage({ ...heard, asked: addOnce(heard.asked, ASKED.orderRequest) }, state.phase, LINES.otherRequest);
       }
       if (intent === "change") return handoff(heard, "change");
       if (intent === "complaint") return handoff(heard, "complaint");
@@ -505,10 +526,9 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         if (heard.misses >= MAX_RETRIES) return handoff({ ...heard, misses: 0 }, "not_heard");
         if (heard.misses >= 1) return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: SECOND_TRY.ask_order! }] };
         const wordy = text.trim().split(/\s+/).length > 3;
-        return {
-          state: { ...heard, misses: heard.misses + 1 },
-          actions: [{ type: "say", text: wordy ? `${LINES.offTopic} ${LINES.askOrderAgain}` : LINES.askOrderAgain }],
-        };
+        // Off-topic: a refusal is its own turn (offer a message), never glued to a re-prompt.
+        if (wordy) return offerMessage({ ...heard, misses: heard.misses + 1 }, "ask_order", LINES.offTopic);
+        return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: LINES.askOrderAgain }] };
       }
 
       if (state.phase === "ask_name") return miss("");
@@ -546,6 +566,24 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
         state: { ...state, phase: "ask_order", orderNumber: null, failedLookups: failed, told },
         actions: [{ type: "say", text: LINES.tryAgain }],
       };
+    }
+
+    case "offer_message": {
+      const back = state.returnPhase ?? "ask_order";
+      if (event.type === "silence") return handoff({ ...state, returnPhase: undefined }, "message");
+      if (event.type !== "heard") return { state, actions: [] };
+      const heard = { ...state, silences: 0, heardAny: true };
+      const intent = detectIntent(event.text);
+      const yes = intent === "yes" || intent === "message" || intent === "person" || /\b(yes|yeah|yep|please|sure|ok(ay)?|go on|do that)\b/i.test(event.text);
+      const no = intent === "no" || /^\W*(no|nope|nah)\b/i.test(event.text);
+      if (no && !yes) {
+        return {
+          state: { ...heard, phase: back, returnPhase: undefined, misses: 0 },
+          actions: [{ type: "say", text: `No problem. ${QUESTION[back] ?? ""}`.trim() }],
+        };
+      }
+      if (yes || intent === "order_request" || heard.misses >= 1) return handoff({ ...heard, returnPhase: undefined, misses: 0 }, "message");
+      return { state: { ...heard, misses: heard.misses + 1 }, actions: [{ type: "say", text: LINES.offerAgain }] };
     }
 
     case "ringing_owner": {

@@ -33,6 +33,8 @@ export type VoiceSession = {
    * or early if `interruptible` and the caller starts talking (barge-in).
    */
   say(text: string, opts?: { interruptible?: boolean }): Promise<void>;
+  /** Stop the line speaking now (barge-in): cancel the response and drop its audio. */
+  stop?(): void;
   /** End the session and release the provider connection. */
   end(): Promise<void>;
 };
