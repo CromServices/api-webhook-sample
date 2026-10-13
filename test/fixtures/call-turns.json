@@ -168,5 +168,75 @@
   "text": "Uh, just use crom services at g mail dot com dot A U",
   "issue": "misheard",
   "lineReply": "I still couldn't match those details, so I'll put you through to Sam."
+ },
+ {
+  "call": "call-5",
+  "t": 1.78,
+  "text": "Yes. (hello, before the greeting)",
+  "issue": "ok",
+  "lineReply": "Hi, it's Sam's Café. What's your order number?"
+ },
+ {
+  "call": "call-5",
+  "t": 9.91,
+  "text": "Uh, it's a thousand and forty-two",
+  "issue": "ok",
+  "lineReply": "Is that order one-oh-four-two?"
+ },
+ {
+  "call": "call-5",
+  "t": 15.16,
+  "text": "Yes.",
+  "issue": "ok",
+  "lineReply": "Thanks. And what's the mobile number or email on the order?"
+ },
+ {
+  "call": "call-5",
+  "t": 27.48,
+  "text": "It's 0 4 9 1 It's 0 4 9 1 5 7 0 1 5 6",
+  "issue": "misheard",
+  "lineReply": "Sorry, I missed that. What's the mobile or email on the order?"
+ },
+ {
+  "call": "call-5",
+  "t": 37.05,
+  "text": "0 4 9 1",
+  "issue": "ok",
+  "lineReply": "Could you say the mobile one digit at a time, or spell out the email?"
+ },
+ {
+  "call": "call-5",
+  "t": 58.39,
+  "text": "0 4 9 1 5 7 0 1 1 0 zero 1 5 6",
+  "issue": "ok",
+  "lineReply": "Your order is on its way to you."
+ },
+ {
+  "call": "call-5",
+  "t": 67.4,
+  "text": "Yeah, can I raise another order?",
+  "issue": "ok",
+  "lineReply": "Sure. What's the order number?"
+ },
+ {
+  "call": "call-5",
+  "t": 75,
+  "text": "No, I want to create a new one.",
+  "issue": "misheard",
+  "lineReply": "Sorry, I can only help with orders on this line, but I can take a message for Sam. Sorry, I missed that. What's the order number?"
+ },
+ {
+  "call": "call-5",
+  "t": 79.36,
+  "text": "I want to buy something else from Sam's store.",
+  "issue": "ok",
+  "lineReply": "Could you say the order number one digit at a time? Like one, oh, four, two."
+ },
+ {
+  "call": "call-5",
+  "t": 92.84,
+  "text": "You nearly got there. Yeah, uh, best to send me to Sam so I can create another order.",
+  "issue": "misheard",
+  "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
  }
 ]
