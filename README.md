@@ -1,33 +1,56 @@
 # API webhook sample · Crom Services
 
-A scoped Express webhook receiver: `POST /webhook` checks an HMAC-SHA256 signature over the raw body and replies 200 or 401.
+A scoped Express receiver. `POST /webhook` still checks an HMAC-SHA256 signature over the raw body. `GET` and `POST /leadgen` take a Facebook Lead Ads notification, look the lead up locally, and either write a sheet row plus an owner alert, or leave it for a hand copy.
 
 <!-- Built on CromServices/crom-ts-api-starter at b2cd23a (package.json "starter.config"). Shared files come from the starter; do not edit them here first. -->
 
 ## What it is
 
-A public sample of how Crom Services approaches small API and webhook work. It is for illustration only, not a client system, and it holds no real data. The only secret is the published demo value `crom-demo-webhook-secret-v1`.
+A public sample for one job: catering enquiries from a Facebook lead form land in a sheet, and the owner is told. It is for illustration only, not a client system. There is no Meta account, no live send, and no spend. The people are fictional.
 
-- `GET /` serves a short, plain-language page for business owners (no technical detail; that lives in this README), on the shared Crom theme pinned at crom-shared `v1.0.2`, with the shared header and footer.
+The Facebook app secret and the verify token are generated in memory when `META_APP_SECRET` and `META_VERIFY_TOKEN` are unset. They are never written into the repo. `DEMO_ADMIN_TOKEN` unlocks the private controls used to run the two ways; leave it unset and those controls stay closed. The original signed check still uses the published value `crom-demo-webhook-secret-v1`.
+
+Public pages stay in plain language (names, phones, what they asked for). The browser title is the only place that says sample. Labels live in `src/story.ts`. Counts on the pages are read from the stored runs.
+
+- `GET /` shows the leads Facebook has and the rows in the sheet, from the stored file.
+- `GET /sheet` is the sheet: date, name, phone, email, what they want, source form, and New or Contacted.
+- `GET /alerts` is the owner alerts, stored here. Nothing is emailed or texted.
+- `GET /happened` is what the current run did, in plain language, with no clock times.
+- `GET /before-after` reads the saved before-run and after-run. `GET /before-after?view=triage` counts the before-run: what was checked, what was found, what was fixed first, and what was left for later.
 - `GET /health` returns `{"ok":true}`.
-- `POST /webhook` verifies the `X-Signature-256` header (raw hex, or `sha256=<hex>`) against an HMAC-SHA256 of the raw JSON body. A match returns `200 {"received":true}`; a missing or wrong signature, or an empty secret, returns `401` (fail-closed).
+- `GET /leadgen` answers the verify handshake (`hub.mode`, `hub.verify_token`, `hub.challenge`).
+- `POST /leadgen` checks `X-Hub-Signature-256` (`sha256=<hex>` HMAC-SHA256 of the raw body, app secret). A leadgen change is then filled in from a local stand-in of the lead-details lookup. A bad signature is turned away and nothing is written.
+- `POST /webhook` is the original check: `X-Signature-256` over the raw body, `200 {"received":true}` or `401` (fail-closed).
+
+The old way stores the lead and waits. A delayed hand copy then writes the rows it already had, misses a lead that arrived during the wait, and repeats a lead that was sent twice. It writes no alerts. The fixed way writes one row, blocks a duplicate, tries a failed delivery once, and stores an alert.
 
 | Path | Purpose |
 |---|---|
 | `src/verify.ts` | Sign and verify helpers (timing-safe compare) |
-| `src/app.ts` | `createApp()`: `GET /`, `GET /health`, `POST /webhook` with raw-body capture |
-| `src/landing.ts` | Landing page HTML (crom-shared v1.0.2 theme, header and footer, pinned) |
-| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`) |
-| `test/` | `node:test` suites (verify, HTTP, landing page) |
-| `docs/` | GitHub Pages page: the same plain-language outcome copy as `GET /` |
-| `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
+| `src/leadgen.ts` | Leadgen notice, lead-details tidy, Australian phone |
+| `src/graph.ts` | Local stand-in for the lead-details lookup |
+| `src/store.ts` | Facebook leads, sheet rows, alerts, attempts, the two saved runs |
+| `src/deliver.ts` | Sends one notice and tries a failed delivery once |
+| `src/scenario.ts` | The same fictional leads, run both ways |
+| `src/present.ts` | Turns stored rows into the words on the pages |
+| `src/pages.ts` | Page HTML |
+| `src/story.ts` | Customer-facing labels |
+| `src/app.ts` | `createApp()`: public pages, both receivers, private controls |
+| `src/landing.ts` | crom-shared v1.0.2 header and footer, pinned |
+| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
+| `src/run-sample.ts` | Runs both ways and writes the notes |
+| `test/` | `node:test` suites |
+| `docs/` | Plain-language page for GitHub Pages |
+| `Dockerfile`, `fly.toml` | Disposable host (`crom-api-webhook-demo`, `syd`). This branch does not deploy. |
 
 ## What it proves
 
-- One HMAC-verified webhook endpoint, done the careful way: signature over the raw body, timing-safe compare, fail-closed on anything missing.
+- A Lead Ads notification checked the way Facebook signs it, then filled in from the lead-details shape, with a verify handshake.
+- A bad signature never becomes a row. A repeated lead, or the same person again inside a short window, does not become a second row. A failed delivery is tried once. Phones are stored in Australian form.
+- The hand-copy path really misses and repeats, and writes no alert. The fixed path writes the row and the alert.
 - The same toolchain as every Crom Services TypeScript API: strict TypeScript, `node:test`, a multi-stage `Dockerfile` and `fly.toml`.
 
-Does not prove: payment flows, retries or a production queue.
+Does not prove: a live Meta app, a real CRM, or a sent email or text.
 
 ## Live link
 
@@ -88,7 +111,7 @@ npm test
 npm run dev        # http://localhost:3000/
 ```
 
-`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value.
+`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000. `WEBHOOK_SECRET` defaults to the published demo value. `META_APP_SECRET` and `META_VERIFY_TOKEN` default to a new random value each start. `npm run sample` runs the before and after leads against a fresh file.
 
 Deploy: a push to `main` runs `.github/workflows/fly.yml`, which deploys to Fly when the `FLY_API_TOKEN` repository secret is set (and skips cleanly when it is not). `docs/` is published by `.github/workflows/pages.yml`.
 
