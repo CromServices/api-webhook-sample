@@ -40,3 +40,24 @@ describe("phone line: spoken email with the @ lost by speech-to-text", () => {
     assert.equal((r.actions[0] as any).type, "lookup");
   });
 });
+
+/** Live re-run 3 (13 Oct): the line's own STT heard "John dot period example dot com". */
+describe("phone line: 'period' for 'p at', and the missing dot", () => {
+  const o = () => sampleOrderSource();
+  for (const h of ["Dom dot period example dot com", "dom dot period example dot com.", "dom p at example.com", "dom p at example dot com", "domp@example.com", "Dom P at example.com"]) {
+    it(`order 1045 matches "${h}"`, () => assert.equal(lookupOrder(o(), "1045", h).match, true));
+  }
+  it("the exact heard form 'John dot period example dot com' is read as an email but does NOT match (different name)", () => {
+    const c = normaliseContact("John dot period example dot com");
+    assert.deepEqual(c, { kind: "email", value: "john.p@example.com" });
+    assert.equal(lookupOrder(o(), "1045", "John dot period example dot com").match, false);
+  });
+  it("near misses still fail", () => {
+    for (const h of ["dom dot period example dot net", "don p at example.com", "dom pp at example.com", "do m at example.com", "domp@example.com.au", "dom@example.com", "pdom@example.com"])
+      assert.equal(lookupOrder(o(), "1045", h).match, false, h);
+    assert.equal(lookupOrder(o(), "1042", "dom p at example.com").match, false);
+  });
+  it("a spoken 'period' that isn't an email isn't taken as one", () => {
+    assert.equal(normaliseContact("during the lunch period"), null);
+  });
+});

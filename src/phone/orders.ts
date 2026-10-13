@@ -1,4 +1,4 @@
-import { emailMatchesHeard, normaliseAuPhone, normaliseEmail } from "./normalise.ts";
+import { emailMatchesHeard, emailMatchesLoosely, normaliseAuPhone, normaliseEmail } from "./normalise.ts";
 
 /**
  * Where an order is, in words a caller understands. The phone line only ever
@@ -75,5 +75,5 @@ export function contactMatches(
 ): boolean {
   if (contact.kind === "phone") return normaliseAuPhone(order.phone) === contact.value;
   if (contact.kind === "email" && contact.atless) return emailMatchesHeard(order.email, contact.value);
-  return normaliseEmail(order.email) === contact.value;
+  return emailMatchesLoosely(order.email, contact.value);
 }

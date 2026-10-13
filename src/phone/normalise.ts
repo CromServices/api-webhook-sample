@@ -147,12 +147,39 @@ export function emailMatchesHeard(email: string, heard: string): boolean {
   return ["", "at", "ad", "et", "a"].some((join) => heard === `${local}${join}${domain}`);
 }
 
+/**
+ * Speech-to-text also hears "p at" as "period" ("dom dot p at example dot com" ->
+ * "dom dot period example dot com", live re-run 3, 13 Oct). Returns the address read
+ * with "period" as "p at", or null if there's no "period" to read that way.
+ */
+export function periodAsPAt(input: string): string | null {
+  if (typeof input !== "string" || input.includes("@") || !/\bperiod\b/i.test(input)) return null;
+  return normaliseEmail(input.replace(/\s*\bperiod\b\s*/i, " p at "));
+}
+
+/**
+ * True if a heard email is this order's email, allowing only what speech-to-text loses:
+ * the dots in the local part ("dom p at example.com" -> domp@example.com).
+ * The letters must all match; a different name never matches.
+ */
+export function emailMatchesLoosely(email: string, heard: string): boolean {
+  const e = normaliseEmail(email);
+  const h = normaliseEmail(heard);
+  if (!e || !h) return false;
+  if (e === h) return true;
+  const [el, ed] = e.split("@") as [string, string];
+  const [hl, hd] = h.split("@") as [string, string];
+  return ed === hd && el.replace(/\./g, "") === hl.replace(/\./g, "") && hl.replace(/\./g, "").length >= 3;
+}
+
 /** A contact is an email if it has an @ (or a spoken "at"), otherwise a phone number. */
 export function normaliseContact(
   input: string,
 ): { kind: "email"; value: string; atless?: true } | { kind: "phone"; value: string } | null {
   if (typeof input !== "string") return null;
-  const looksEmail = input.includes("@") || /\s+at\s+.+\s+dot\s+/i.test(input);
+  const looksEmail = input.includes("@") || /\s+at\s+.+\s+dot\s+/i.test(input) || /\s+at\s+[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}\b/i.test(input);
+  const viaPeriod = periodAsPAt(input);
+  if (viaPeriod) return { kind: "email", value: viaPeriod };
   if (looksEmail) {
     const email = normaliseEmail(input);
     if (email) return { kind: "email", value: email };

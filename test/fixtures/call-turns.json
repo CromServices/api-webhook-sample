@@ -304,5 +304,29 @@
     "call": "scenario-6219-rerun-change",
     "t": 33.5,
     "text": "Can I change it to a long black instead?"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 13.6,
+    "text": "Ten forty-five",
+    "expect": "number"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 19.16,
+    "text": "Yes."
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 26.04,
+    "text": "John dot period example dot com",
+    "issue": "misheard",
+    "lineReply": "That contact doesn't match the details on order one-oh-four-five.",
+    "expect": "contact"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 38.16,
+    "text": "Can I change it to a long black instead?"
   }
 ]
