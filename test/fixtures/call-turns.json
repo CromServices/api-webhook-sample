@@ -328,5 +328,48 @@
     "call": "scenario-6219-rerun3-change",
     "t": 38.16,
     "text": "Can I change it to a long black instead?"
+  },
+  {
+    "call": "call-7",
+    "t": 0.0,
+    "text": "Hello?"
+  },
+  {
+    "call": "call-7",
+    "t": 17.66,
+    "text": "1042.",
+    "expect": "number"
+  },
+  {
+    "call": "call-7",
+    "t": 21.56,
+    "text": "Yes.",
+    "issue": "lost (said over the read-back)"
+  },
+  {
+    "call": "call-7",
+    "t": 31.84,
+    "text": "Yes."
+  },
+  {
+    "call": "call-7",
+    "t": 38.84,
+    "text": "I'm not sure, but my name's Ari.",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the mobile or email on the order?"
+  },
+  {
+    "call": "call-7",
+    "t": 46.6,
+    "text": "I don't know. My name is Ari.",
+    "issue": "misheard",
+    "lineReply": "Could you say the mobile one digit at a time, or spell out the email?"
+  },
+  {
+    "call": "call-7",
+    "t": 55.68,
+    "text": "I don't have an email or phone number handy. My name is Ari.",
+    "issue": "misheard",
+    "lineReply": "Let me put you through to Sam, who can help."
   }
 ]

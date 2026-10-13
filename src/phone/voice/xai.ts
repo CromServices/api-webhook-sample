@@ -51,6 +51,8 @@ export class XaiVoiceProvider implements VoiceProvider {
     const dropped = new Set<string>();
     const waiting: Array<() => void> = [];
     const latest = new Map<string, string>();
+    /** Committed turns whose transcript hadn't arrived by the settle wait. */
+    const late = new Set<string>();
 
     const send = (msg: unknown) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
@@ -129,6 +131,16 @@ export class XaiVoiceProvider implements VoiceProvider {
           case "conversation.item.input_audio_transcription.completed": {
             const id = String(event.item_id ?? "");
             latest.set(id, String(event.transcript ?? "").trim());
+            // Call 7: a short "Yes" said over the line came back after the settle wait and was
+            // dropped. A transcript for a turn that's already over is delivered when it lands.
+            if (late.has(id) && latest.get(id)) {
+              late.delete(id);
+              setTimeout(() => {
+                const text = latest.get(id) ?? "";
+                latest.delete(id);
+                if (text) events.onHeard(text);
+              }, 80);
+            }
             return;
           }
           case "input_audio_buffer.committed": {
@@ -138,6 +150,11 @@ export class XaiVoiceProvider implements VoiceProvider {
               const text = latest.get(id) ?? "";
               latest.delete(id);
               if (text) events.onHeard(text);
+              else {
+                late.add(id);
+                // Give up on it after 5 s.
+                setTimeout(() => late.delete(id), 5000);
+              }
             }, latest.get(id) ? Math.min(80, this.opts.settleMs ?? 250) : this.opts.settleMs ?? 250);
             return;
           }

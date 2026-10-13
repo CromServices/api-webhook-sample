@@ -57,8 +57,8 @@ describe("call 4 fix 2: outbound greets when the person first speaks, else after
     assert.deepEqual(p.said, [LINES.greet], "the hello itself is not answered");
     ws.close();
   });
-  it("default wait is 6 s", () => {
-    assert.match(readFileSync(new URL("../src/phone/twilio.ts", import.meta.url), "utf8"), /helloWaitMs \?\? 6000/);
+  it("default wait is now 0 (call 7: greet as soon as the outbound call connects)", () => {
+    assert.match(readFileSync(new URL("../src/phone/twilio.ts", import.meta.url), "utf8"), /helloWaitMs \?\? 0/);
   });
 });
 

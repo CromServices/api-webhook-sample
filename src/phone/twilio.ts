@@ -5,7 +5,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import type { CallLog } from "./calllog.ts";
 import { OWNER_NAME } from "./flow.ts";
 import type { LookupResult } from "./lookup.ts";
-import { normaliseAuPhone, spokenDigits } from "./normalise.ts";
+import { normaliseAuPhone, readOrderNumber, spokenDigits } from "./normalise.ts";
 import { ASKED, HELLO_ONLY, ORDER_REQUEST } from "./flow.ts";
 import { CallSession, TEXTS_NOT_SET_UP, type TextSender } from "./session.ts";
 import type { VoiceProvider, VoiceSession } from "./voice/provider.ts";
@@ -57,6 +57,8 @@ export type TwilioOptions = {
   vadMinThreshold?: number;
   /** After a barge-in, say the stopped line again if nothing is heard within this long (default 2000 ms). */
   resayMs?: number;
+  /** Mobile callers: frames of speech (20 ms each) before a barge-in (default 6). */
+  mobileBargeFrames?: number;
   /** Join window once the caller has started reading out a phone number (default 2000 ms). */
   digitJoinMs?: number;
   /** Print a timed transcript to the server log (test calls only). */
@@ -288,6 +290,22 @@ const MULAW = Int16Array.from({ length: 256 }, (_, i) => {
   return u & 0x80 ? 0x84 - t : t - 0x84;
 });
 
+export function digitsStillComing(phase: string | undefined, joined: string): boolean {
+  if (/@|\bat\b/i.test(joined)) return false;
+  const n = spokenDigits(joined).length;
+  if (n < 1 && !((phase === "ask_order" || phase === "confirm_order") && /\b(thousand|hundred)\b/i.test(joined))) return false;
+  if ((phase === "ask_order" || phase === "confirm_order") && /\b(and|thousand|hundred)[\s,.]*$/i.test(joined)) return true;
+  if (phase === "ask_order" || phase === "confirm_order") return !readOrderNumber(joined) && (n < 4 || /\b(thousand|hundred)\b/i.test(joined));
+  if (phase === "ask_contact") return n < 10;
+  if (phase === "ask_name") return n < 3;
+  return false;
+}
+
+/** Call 7: a mobile line (background noise) needs louder, longer speech before the line stops. */
+export function isMobileNumber(n: string): boolean {
+  return /^(\+?61|0)4\d{8}$/.test(n.replace(/[\s()-]/g, ""));
+}
+
 export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let streamSid = "";
   let callSid = "";
@@ -327,16 +345,21 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let audioSeen = false;
   let currentLine = "";
   let resayTimer: NodeJS.Timeout | null = null;
-  const resayMs = opts.resayMs ?? 2000;
-  const threshold = () => Math.max(vadMin, Math.min(vadThreshold, noiseFloor * 10));
-  /** Mid phone number: digits started in ask_contact but fewer than 10 so far. */
-  const midNumber = () => {
-    if (session?.phase !== "ask_contact") return false;
-    const joined = pending.join(" ");
-    if (/@|\bat\b/i.test(joined)) return false;
-    const n = spokenDigits(joined).length;
-    return n >= 1 && n < 10;
+  // Call 7: 2.6 s of dead air after a stop. Re-say (or answer) within 1 s.
+  const resayMs = opts.resayMs ?? 700;
+  let mobile = false;
+  /** Frames of speech (20 ms each) before a barge-in stops the line: 2 on a landline, 6 (120 ms) on a mobile. */
+  const bargeFrames = () => (mobile ? opts.mobileBargeFrames ?? 6 : 2);
+  const threshold = () => {
+    const t = Math.max(vadMin, Math.min(vadThreshold, noiseFloor * 10));
+    // Mobile: at least 1.5x the bar and 4x the line's noise floor, so noise doesn't stop the line.
+    return mobile ? Math.max(t * 1.5, noiseFloor * 4) : t;
   };
+  /**
+   * Digits expected and still coming (call 7: the 2 s window only then, 1.2 s otherwise):
+   * order number under 4 digits, phone under 10, last-3 under 3.
+   */
+  const midNumber = () => digitsStillComing(session?.phase, pending.join(" "));
   let joinTimer: NodeJS.Timeout | null = null;
   let waitingForHello = false;
   let startFlow: (() => void) | null = null;
@@ -363,8 +386,8 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     const check = () => {
       resayTimer = null;
       if (ended || joinWaits.length !== turns || pending.length || speaking) return;
-      if (Date.now() - lastVoiceAt < 1000) {
-        resayTimer = setTimeout(check, 500);
+      if (Date.now() - lastVoiceAt < 250) {
+        resayTimer = setTimeout(check, 100);
         return;
       }
       note("line", "(nothing heard after the stop: saying it again)");
@@ -445,10 +468,8 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     if (level > threshold()) {
       voicedFrames += 1;
       if (voicedFrames === 1) onsetAt = Date.now();
-      if (voicedFrames >= 2) {
-        lastVoiceAt = Date.now();
-        if (voicedFrames === 2) callerSpeechStarted("caller audio");
-      }
+      if (voicedFrames >= 2) lastVoiceAt = Date.now();
+      if (voicedFrames === bargeFrames()) callerSpeechStarted("caller audio");
     } else {
       voicedFrames = 0;
       // Falls quickly to a quiet line, rises slowly (so speech can't drag it up).
@@ -538,6 +559,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     switch (msg.event) {
       case "start": {
         const params = msg.start?.customParameters ?? {};
+        mobile = isMobileNumber(String(params.caller ?? ""));
         t0 = Date.now();
         callSid = String(msg.start?.callSid ?? "");
         streamSid = String(msg.start?.streamSid ?? msg.streamSid ?? "");
@@ -567,12 +589,14 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
               heardPiece(text);
             },
             onInterrupted() {
-              if (!audioSeen || Date.now() - lastVoiceAt < 600) stopPlayback("speech-to-text");
+              const ours = mobile ? voicedFrames >= bargeFrames() : Date.now() - lastVoiceAt < 600;
+              if (!audioSeen || ours) stopPlayback("speech-to-text");
             },
             onSpeechStarted() {
               // xAI's speech-start can land ~0.5-1 s late: only stop the line for speech our VAD
               // heard just now (or when we have no audio of our own), not for a sound that ended before the line began.
-              if (!audioSeen || Date.now() - lastVoiceAt < 600) callerSpeechStarted("speech-to-text");
+              const ours = mobile ? voicedFrames >= bargeFrames() : Date.now() - lastVoiceAt < 600;
+              if (!audioSeen || ours) callerSpeechStarted("speech-to-text");
               else clearSilence();
               // Outbound: greet once the person has said hello (speech start + a beat).
               if (waitingForHello && startFlow) setTimeout(() => startFlow?.(), 700);
@@ -596,7 +620,9 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           bytes = 0;
           note("line", text);
           // Barge-in (flag): every line can be talked over, and the caller's audio is never dropped.
-          const interruptible = !!opts.bargeIn;
+          // Mobile: xAI's own speech-start would stop the line on background noise, so it is not told
+          // the line is interruptible; our VAD (higher bar) does the stopping instead.
+          const interruptible = !!opts.bargeIn && !mobile;
           speaking = true;
           currentLine = text;
           const id = ++playId;
@@ -641,10 +667,13 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           void run((s) => s.start(normaliseAuPhone(caller) ?? caller));
         };
         startFlow = begin;
-        if (params.direction === "outbound") {
-          // A call the line places: let the person say hello first (or 4 s of quiet).
+        note("line", `(voice ready ${Date.now() - t0} ms after stream start)`);
+        // Call 7: waiting for the person's "hello" left 13 s of dead air on a mobile. Outbound now
+        // greets as soon as the stream is up (helloWaitMs 0); a "hello" over the greeting is ignored.
+        const helloWait = opts.helloWaitMs ?? 0;
+        if (params.direction === "outbound" && helloWait > 0) {
           waitingForHello = true;
-          setTimeout(begin, opts.helloWaitMs ?? 6000);
+          setTimeout(begin, helloWait);
         } else begin();
         return;
       }

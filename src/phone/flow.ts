@@ -57,6 +57,10 @@ export const LINES = {
   bye: `Thanks for calling ${SHOP_NAME}. Bye for now.`,
   stillThere: "Are you still there?",
   noMessage: `I didn't hear a message, but I've let ${OWNER_NAME} know you called. Bye for now.`,
+  /** "Not sure / don't know / don't have it" at the contact ask (call 7): straight to name + last 3. */
+  noContact: "No worries. What's your first name, and the last three digits of your phone?",
+  /** A first name with no digits (call 7: "my name's Ari"): ask only for the last three digits. */
+  askLast3: (name: string) => `Thanks, ${name}. And the last three digits of your phone?`,
   confirmOrder: (n: string) => `Is that order ${sayDigits(n)}?`,
   confirmAgain: "Okay. What's the order number? One digit at a time is easiest.",
   noNumber: `No problem. Tell me the name on the order and the last three digits of your phone number. Or say "message" to leave ${OWNER_NAME} a message.`,
@@ -129,6 +133,8 @@ export type FlowState = {
   lastSaid?: string;
   /** Kind of contact in the last lookup ("email" -> the next ask is for the mobile). */
   lastContactKind?: "email" | "phone";
+  /** First name said without digits; joined to the last 3 when they come. */
+  pendingName?: string;
 };
 
 export type FlowEvent =
@@ -211,6 +217,24 @@ const NO_NUMBER =
 const NO =
   /^\s*(no|nope|nah)\s*[.,!]?\s*$|^\s*(no|nope|nah)\b[ ,]*(thanks|thank you|that's all|that is all|all good|i'm good|cheers|that's it)|\byeah,? nah\b|\b(that's all|that is all|nothing else|bye|goodbye)\b/i;
 const YES = /^\s*(yes|yeah|yep|yup|sure|please(?! \w+ the)|correct|right|exactly|too right|spot on|that's right|that's it|you got it|bang on)\b|\b(another order|check another|one more|that's (right|correct))\b/i;
+
+/** No contact to give (call 7). Not a refusal to talk; leads to name + last 3. */
+export const NO_CONTACT =
+  /\b(not sure|no idea|dunno|don'?t know|do not know|don'?t have|do not have|haven'?t got|have not got|can'?t remember|cannot remember|not (handy|on me|with me))\b/i;
+const NOT_A_NAME = new Set(["sure", "not", "just", "calling", "after", "here", "trying", "looking", "wondering", "on", "in", "the", "a", "fine", "good", "ok", "okay", "ready", "sorry", "back", "still", "about", "checking", "ringing", "going", "so", "really"]);
+/** "my name's Ari", "it's Ari", "this is Ari", "I'm Ari", "Ari here" (no digits) -> "Ari". */
+export function bareName(text: string): string | null {
+  if (spokenDigits(text).length) return null;
+  const re = /\b(?:my name'?s|my name is|name'?s|the name'?s|the name is|this is|it'?s|i'?m|i am)\s+([a-z][a-z'-]{1,20})\b/gi;
+  const found = [...text.matchAll(re)].map((x) => x[1]!.toLowerCase()).filter((x) => !NOT_A_NAME.has(x));
+  const here = /^\s*([a-z][a-z'-]{1,20})\s+here\b/i.exec(text)?.[1]?.toLowerCase();
+  const n = found.at(-1) ?? (here && !NOT_A_NAME.has(here) ? here : undefined);
+  if (!n) return null;
+  return n[0]!.toUpperCase() + n.slice(1);
+}
+
+/** Intents that take their own path; a name or "not sure" inside them doesn't redirect. */
+const DETOUR_INTENTS = new Set<Intent>(["order_request", "change", "complaint", "person", "message", "hours", "location", "no_number"]);
 
 export function detectIntent(text: string): Intent {
   if (NO_NUMBER.test(text)) return "no_number";
@@ -467,9 +491,34 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       }
       if (state.phase === "ask_name" && spokenDigits(text).length >= 3 && /[a-z]{2,}/i.test(text)) {
         return {
-          state: { ...heard, phase: "looking_up", misses: 0, asked: addOnce(heard.asked, ASKED.status) },
-          actions: [{ type: "lookup_by_name", text }],
+          state: { ...heard, phase: "looking_up", misses: 0, pendingName: undefined, asked: addOnce(heard.asked, ASKED.status) },
+          actions: [{ type: "lookup_by_name", text, ...(state.orderNumber ? { orderNumber: state.orderNumber } : {}) }],
         };
+      }
+      // Name given earlier, now just the 3 digits.
+      if ((state.phase === "ask_name" || state.phase === "ask_contact") && state.pendingName && spokenDigits(text).length === 3) {
+        return {
+          state: { ...heard, phase: "looking_up", misses: 0, pendingName: undefined, asked: addOnce(heard.asked, ASKED.status) },
+          actions: [{ type: "lookup_by_name", text: `${state.pendingName} ${text}`, ...(state.orderNumber ? { orderNumber: state.orderNumber } : {}) }],
+        };
+      }
+      // Call 7: a bare first name -> ask for the last 3 digits only.
+      // Re-ask cap kept: past it, these hand over like any other miss.
+      if ((state.phase === "ask_contact" || state.phase === "ask_name") && heard.misses < MAX_RETRIES && !DETOUR_INTENTS.has(detectIntent(text))) {
+        const name = bareName(text);
+        if (name) {
+          return {
+            state: { ...heard, phase: "ask_name", misses: heard.misses + 1, pendingName: name },
+            actions: [{ type: "say", text: LINES.askLast3(name) }],
+          };
+        }
+        // Call 7: no contact to give -> name + last 3 on the first try (order number kept).
+        if (state.phase === "ask_contact" && NO_CONTACT.test(text) && !normaliseContact(text)) {
+          return {
+            state: { ...heard, phase: "ask_name", misses: heard.misses + 1 },
+            actions: [{ type: "say", text: LINES.noContact }],
+          };
+        }
       }
 
       const intent = detectIntent(text);
@@ -482,6 +531,14 @@ function stepInner(state: FlowState, event: FlowEvent): { state: FlowState; acti
       if (intent === "message") return handoff(heard, "message");
       if (intent === "hours") return reprompt(heard, SHOP_INFO.hours);
       if (intent === "location") return reprompt(heard, SHOP_INFO.where);
+      // Call 7: no contact details at the contact ask -> name + last 3, keeping the confirmed order.
+      if (intent === "no_number" && state.phase === "ask_contact" && state.orderNumber && heard.misses < MAX_RETRIES) {
+        const name = bareName(text);
+        return {
+          state: { ...heard, phase: "ask_name", misses: heard.misses + 1, ...(name ? { pendingName: name } : {}) },
+          actions: [{ type: "say", text: name ? LINES.askLast3(name) : LINES.noContact }],
+        };
+      }
       if (intent === "no_number" && (state.phase !== "ask_contact" || state.failedLookups > 0)) {
         return {
           state: { ...heard, phase: "ask_name", misses: 0, orderNumber: null, asked: addOnce(heard.asked, ASKED.status) },
