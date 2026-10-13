@@ -34,7 +34,23 @@ const app = createApp({
       // Off until tried on a live call.
       bargeIn: process.env.PHONE_BARGE_IN === "1",
       confirmReask: process.env.PHONE_CONFIRM_REASK === "1",
-      voicemailTranscribe: process.env.PHONE_VOICEMAIL_TRANSCRIBE === "1",
+      // Voicemail text by xAI speech-to-text (REST, about US$0.10/hour). Twilio's paid transcription is off.
+      transcribeVoicemail:
+        process.env.PHONE_VOICEMAIL_TRANSCRIBE === "1" && process.env.XAI_API_KEY
+          ? async (wav) => {
+              const form = new FormData();
+              form.append("model", "grok-voice-transcribe-2.0");
+              form.append("language", "en");
+              form.append("file", new Blob([new Uint8Array(wav)], { type: "audio/wav" }), "voicemail.wav");
+              const r = await fetch("https://api.x.ai/v1/stt", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}` },
+                body: form,
+              });
+              if (!r.ok) throw new Error(`stt ${r.status}`);
+              return String(((await r.json()) as { text?: string }).text ?? "");
+            }
+          : undefined,
       joinMs: process.env.PHONE_JOIN_MS ? Number(process.env.PHONE_JOIN_MS) : undefined,
       provider: new XaiVoiceProvider({
         apiKey: process.env.XAI_API_KEY ?? "",

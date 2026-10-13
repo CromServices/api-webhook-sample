@@ -20,7 +20,7 @@ primary_region = "syd"
   # Kept on after call 3 (both helped). Voicemail text flags order requests for Sam.
   PHONE_BARGE_IN = "1"
   PHONE_CONFIRM_REASK = "1"
-  PHONE_VOICEMAIL_TRANSCRIBE = "1"
+  PHONE_VOICEMAIL_TRANSCRIBE = "1"  # xAI speech-to-text, not Twilio
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
 
 [mounts]

@@ -6,7 +6,8 @@ import type { CallLog } from "./calllog.ts";
 import { OWNER_NAME } from "./flow.ts";
 import type { LookupResult } from "./lookup.ts";
 import { normaliseAuPhone, spokenDigits } from "./normalise.ts";
-import { ASKED, ORDER_REQUEST } from "./flow.ts";
+import { ASKED, HELLO_ONLY, ORDER_REQUEST } from "./flow.ts";
+import { normaliseContact, readOrderNumber } from "./normalise.ts";
 import { CallSession, TEXTS_NOT_SET_UP, type TextSender } from "./session.ts";
 import type { VoiceProvider, VoiceSession } from "./voice/provider.ts";
 
@@ -47,8 +48,10 @@ export type TwilioOptions = {
   joinMs?: number;
   /** Outbound calls: longest wait for the person's hello before greeting. */
   helloWaitMs?: number;
-  /** Ask Twilio to transcribe voicemails (about US$0.05/min), so order requests in them get flagged. */
-  voicemailTranscribe?: boolean;
+  /** Transcribe a voicemail with the line's own speech-to-text (Twilio's paid transcription stays off). */
+  transcribeVoicemail?: (wav: Buffer) => Promise<string>;
+  /** Join window once the answer already looks complete for the question (default 150 ms). */
+  quickJoinMs?: number;
   /** Join window once the caller has started reading out a phone number (default 2000 ms). */
   digitJoinMs?: number;
   /** Print a timed transcript to the server log (test calls only). */
@@ -118,7 +121,6 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
       `<Record maxLength="120" timeout="5" playBeep="true" action="${xml(`${base}/phone/recorded`)}" method="POST"` +
       ` recordingStatusCallback="${xml(`${base}/phone/recording`)}" recordingStatusCallbackMethod="POST"` +
       ` recordingStatusCallbackEvent="completed"` +
-      (opts.voicemailTranscribe ? ` transcribe="true" transcribeCallback="${xml(`${base}/phone/transcribed`)}"` : "") +
       `/>` +
       `<Hangup/>`
     );
@@ -183,6 +185,20 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
     const secs = Number(req.body.RecordingDuration ?? 0);
     if (String(req.body.RecordingStatus ?? "completed") === "completed" && url && secs >= 1) {
       opts.callLog.update(callSid, { voicemail: "left", recordingUrl: url, recordingSeconds: secs });
+      if (opts.transcribeVoicemail && opts.accountSid && url.startsWith("https://api.twilio.com/")) {
+        void (async () => {
+          try {
+            const r = await fetchImpl(`${url}.wav`, {
+              headers: { authorization: "Basic " + Buffer.from(`${opts.accountSid}:${token}`).toString("base64") },
+            });
+            if (!r.ok) return;
+            const text = (await opts.transcribeVoicemail!(Buffer.from(await r.arrayBuffer()))).trim().slice(0, 500);
+            if (text) noteVoicemailText(callSid, text);
+          } catch (err) {
+            console.error("phone line: voicemail transcription failed", (err as Error).message);
+          }
+        })();
+      }
     } else {
       opts.callLog.update(callSid, { voicemail: "none" });
     }
@@ -194,16 +210,19 @@ export function mountTwilio(app: Express, server: Server | null, opts: TwilioOpt
     if (!signed(req, res)) return;
     const callSid = String(req.body.CallSid ?? "");
     const text = String(req.body.TranscriptionText ?? "").trim().slice(0, 500);
-    if (String(req.body.TranscriptionStatus ?? "completed") === "completed" && text) {
-      const entry = opts.callLog.list().find((e) => e.ref === callSid);
-      const wantsOrder = ORDER_REQUEST.test(text);
-      opts.callLog.update(callSid, {
-        message: text,
-        ...(wantsOrder && entry && !entry.asked.includes(ASKED.orderRequest) ? { asked: [...entry.asked, ASKED.orderRequest] } : {}),
-      });
-    }
+    if (String(req.body.TranscriptionStatus ?? "completed") === "completed" && text) noteVoicemailText(callSid, text);
     res.status(204).end();
   });
+
+  /** Voicemail text into the log; an order request in it is logged as a request for Sam. */
+  function noteVoicemailText(callSid: string, text: string) {
+    const entry = opts.callLog.list().find((e) => e.ref === callSid);
+    const wantsOrder = ORDER_REQUEST.test(text);
+    opts.callLog.update(callSid, {
+      message: text,
+      ...(wantsOrder && entry && !entry.asked.includes(ASKED.orderRequest) ? { asked: [...entry.asked, ASKED.orderRequest] } : {}),
+    });
+  }
 
   /** Owner-only voicemail audio, proxied so the recording never needs to be public. Mounted behind /calls auth. */
   async function sendVoicemail(key: string, res: Response): Promise<void> {
@@ -296,6 +315,22 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
   let holdTimer: NodeJS.Timeout | null = null;
   let waitingForHello = false;
   let startFlow: (() => void) | null = null;
+  const quickJoinMs = opts.quickJoinMs ?? 150;
+  let greetingAt = 0;
+  /** The pieces so far already answer the question: no need to wait the full join window. */
+  const complete = () => {
+    const text = pending.join(" ");
+    switch (session?.phase) {
+      case "ask_order":
+        return !!readOrderNumber(text) && !/\b(and|a|thousand|hundred)\W*$/i.test(text);
+      case "confirm_order":
+        return /^\W*(yes|yeah|yep|yup|no|nope|nah|correct|that's right)\W*$/i.test(text);
+      case "ask_contact":
+        return !!normaliseContact(text);
+      default:
+        return false;
+    }
+  };
   const flush = () => {
     if (joinTimer) clearTimeout(joinTimer);
     if (holdTimer) clearTimeout(holdTimer);
@@ -303,6 +338,11 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     if (!pending.length) return;
     const text = pending.join(" ");
     pending = [];
+    // A bare "hello" landing on the greeting (first turn): let the greeting finish; don't restart it.
+    if (joinWaits.length === 0 && HELLO_ONLY.test(text) && (speaking || Date.now() - greetingAt < 6000)) {
+      note("caller", `${text} (hello during the greeting: ignored, greeting carries on)`);
+      return;
+    }
     const waited = Date.now() - lastPieceAt;
     joinWaits.push(waited);
     heardAt = Date.now();
@@ -327,7 +367,7 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
     lastPieceAt = Date.now();
     if (joinTimer) clearTimeout(joinTimer);
     const reading = midNumber();
-    joinTimer = setTimeout(flush, reading ? Math.max(joinMs, digitJoinMs) : joinMs);
+    joinTimer = setTimeout(flush, reading ? Math.max(joinMs, digitJoinMs) : complete() ? Math.min(joinMs, quickJoinMs) : joinMs);
     if (!holdTimer) holdTimer = setTimeout(flush, reading ? maxHoldMs + digitJoinMs : maxHoldMs);
   };
   // Off by default. PHONE_TRANSCRIPT_LOG=1 prints a timed transcript for test calls only.
@@ -445,6 +485,8 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
             },
             onSpeechStarted() {
               clearSilence();
+              // Outbound: greet once the person has said hello (speech start + a beat).
+              if (waitingForHello && startFlow) setTimeout(() => startFlow?.(), 700);
               // Still talking: wait for the rest before answering.
               if (joinTimer) {
                 clearTimeout(joinTimer);
@@ -508,13 +550,14 @@ export function bridgeCall(ws: WebSocket, opts: BridgeOptions): void {
           if (startFlow === null) return;
           startFlow = null;
           waitingForHello = false;
+          greetingAt = Date.now();
           void run((s) => s.start(normaliseAuPhone(caller) ?? caller));
         };
         startFlow = begin;
         if (params.direction === "outbound") {
           // A call the line places: let the person say hello first (or 4 s of quiet).
           waitingForHello = true;
-          setTimeout(begin, opts.helloWaitMs ?? 4000);
+          setTimeout(begin, opts.helloWaitMs ?? 6000);
         } else begin();
         return;
       }

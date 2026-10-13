@@ -133,11 +133,12 @@ export class XaiVoiceProvider implements VoiceProvider {
           }
           case "input_audio_buffer.committed": {
             const id = String(event.item_id ?? "");
+            // Text already in: answer after a short settle; else wait the full settle for it.
             setTimeout(() => {
               const text = latest.get(id) ?? "";
               latest.delete(id);
               if (text) events.onHeard(text);
-            }, this.opts.settleMs ?? 250);
+            }, latest.get(id) ? Math.min(80, this.opts.settleMs ?? 250) : this.opts.settleMs ?? 250);
             return;
           }
           case "response.created":

@@ -110,7 +110,7 @@ describe("phone line: detours", () => {
   });
   it("unknown order: tries once more, then passes to Sam", async () => {
     const { said, rang } = await call(["1099", "0491 570 156", "1098", "0491 570 156"]);
-    assert.ok(said.some((l) => l.startsWith("Sorry, I couldn't match")));
+    assert.ok(said.some((l) => l.startsWith("That contact doesn't match the details on order")));
     assert.ok(said.includes(LINES.handoffNoMatch));
     assert.equal(rang, 1);
   });

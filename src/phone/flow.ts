@@ -35,7 +35,7 @@ export const LINES = {
   greetAgain: `Hi there, you're through to ${SHOP_NAME}. What's your order number?`,
   /** First no-match: keep the order, ask for the contact again, offer the name lookup. */
   noMatchHint: (n: string) =>
-    `Sorry, I couldn't match that to order ${sayDigits(n)}. What's the mobile or email on it? Or your first name and the last three digits of your phone?`,
+    `That contact doesn't match the details on order ${sayDigits(n)}. What's the mobile or email on that order? Or your first name and the last three digits of your phone?`,
   orderRequest: `I can't place orders, but I'll pass it to ${OWNER_NAME}.`,
   askOrderAgain: "Sorry, I missed that. What's the order number?",
   askContact: "Thanks. And what's the mobile number or email on the order?",
@@ -45,7 +45,7 @@ export const LINES = {
   offer: `I can check another order, or put you through to ${OWNER_NAME}. Which would you like?`,
   handoffChange: `I can't change orders myself, but ${OWNER_NAME} can. I'll put you through now.`,
   handoffPerson: `No problem, I'll put you through to ${OWNER_NAME} now.`,
-  handoffNoMatch: `I still couldn't match those details, so I'll put you through to ${OWNER_NAME}.`,
+  handoffNoMatch: `That still doesn't match the details on the order, so I'll put you through to ${OWNER_NAME}.`,
   handoffNotHeard: `I'm having trouble hearing you, so I'll put you through to ${OWNER_NAME}.`,
   connecting: `${OWNER_NAME}'s picking up now. Putting you through.`,
   noAnswer: `${OWNER_NAME} can't get to the phone right now. Please leave a short message after this, with your name, and ${OWNER_NAME} will call you back.`,
@@ -318,7 +318,7 @@ const REPROMPT: Partial<Record<Phase, string>> = {
   told: LINES.anythingElse,
 };
 
-const HELLO_ONLY =
+export const HELLO_ONLY =
   /^\W*(hello|hi|hey|hiya|g'?day|yeah|yes|hello,? (hello|who'?s (this|that)|who is (this|it))|who'?s (this|calling)|who is this)\W*(\W+(hello|hi|yeah|there))*\W*$/i;
 
 /** A number heard: read it back first if it could have been misheard, else go on. */
