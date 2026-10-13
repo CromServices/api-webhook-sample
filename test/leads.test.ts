@@ -600,6 +600,9 @@ describe("the same leads, both ways", () => {
     assert.equal((compare.match(new RegExp(escapeRegExp(afterHeadline), "g")) ?? []).length, 1);
     assert.equal((compare.match(new RegExp(escapeRegExp(STORY.priorLine), "g")) ?? []).length, 2);
     assert.doesNotMatch(compare, /max-width:1500px/);
+    assert.equal((compare.match(/max-width:1560px/g) ?? []).length, 2);
+    assert.match(compare, /white-space:nowrap/);
+    assert.doesNotMatch(pages[0][1], /max-width:1560px/);
     for (const lead of before.facebookLeads) assert.match(compare, new RegExp(lead.name));
     assert.match(compare, /Copied twice/);
     assert.match(compare, /Not in your sheet/);
@@ -610,6 +613,7 @@ describe("the same leads, both ways", () => {
     assert.match(compare, /Owner alerted/);
 
     const triage = pages[5][1];
+    assert.doesNotMatch(triage, /max-width:1560px/);
     const avery = before.facebookLeads.find((lead) => lead.name === PEOPLE.avery.name);
     assert.ok(avery);
     assert.match(triage, new RegExp(escapeRegExp(beforeHeadline)));
