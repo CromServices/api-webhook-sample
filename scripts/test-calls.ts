@@ -18,9 +18,9 @@ const pause = (s: number) => `<Pause length="${s}"/>`;
 
 /** Caller side, timed against the line's prompts. Order 1042 / 0491 570 156 is sample data. */
 export const CALLERS: Record<string, string> = {
-  "happy-path": pause(11) + say("It's order ten forty two.") + pause(6) + say("Oh four nine one, five seven oh, one five six.") + pause(10) + say("No, that's all, thanks.") + pause(6),
+  "happy-path": pause(11) + say("It's order ten forty two.") + pause(5) + say("Yes.") + pause(5) + say("Oh four nine one, five seven oh, one five six.") + pause(10) + say("No, that's all, thanks.") + pause(6),
   "wrong-order": pause(11) + say("It's order ten ninety nine.") + pause(6) + say("Oh four nine one, five seven oh, three one three.") + pause(9) + say("Ten ninety eight.") + pause(6) + say("Oh four nine one, five seven oh, three one three.") + pause(16) + say("Hi Sam, it's a test call, I think I've got the wrong order number.") + pause(5),
-  "change-request": pause(11) + say("Ten forty five.") + pause(6) + say("dom dot p at example dot com.") + pause(10) + say("Can I change it to a long black instead?") + pause(16) + say("Hi Sam, test call, please change my coffee to a long black.") + pause(5),
+  "change-request": pause(11) + say("Ten forty five.") + pause(5) + say("Yes.") + pause(5) + say("dom dot p at example dot com.") + pause(10) + say("Can I change it to a long black instead?") + pause(16) + say("Hi Sam, test call, please change my coffee to a long black.") + pause(5),
   "ask-for-person": pause(11) + say("Can I just talk to Sam please?") + pause(16) + say("Hi Sam, this is a scripted test call. No need to call back.") + pause(5),
   "owner-no-answer": pause(11) + say("I need to cancel my banana bread order.") + pause(16) + say("Hi, it's a test call. Please cancel my banana bread. Thanks.") + pause(5),
 };
