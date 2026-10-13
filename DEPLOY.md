@@ -14,6 +14,9 @@ Env in fly.phone.toml: PUBLIC_BASE_URL, DATA_PATH=/data/demo-shop.json, CALL_LOG
 Optional: PHONE_TRANSCRIPT_LOG=1 prints a timed transcript (test calls only; contains what callers say).
 
 Then point the Twilio number's Voice URL (POST) at `https://crom-phone-line-sample.fly.dev/phone/voice`.
+The line is **08 6219 3046** (+61862193046, Fremantle WA; AU local, address-only, US$3/mo). The older 08 5122 2255
+(shown as "Christmas Island" by libphonenumber, whose data puts 08 5122 2xxx on Christmas Island) is kept as our own
+caller for scripted test calls (`scripts/test-calls.ts`: from 08 5122 2255, to 08 6219 3046 only).
 Every /phone/* webhook answers 403 until TWILIO_AUTH_TOKEN and PUBLIC_BASE_URL are set and the signature checks out.
 
 Checks: `GET /health` -> {"ok":true}; unsigned `POST /phone/voice` -> 403; `GET /calls` -> 401 without the login.

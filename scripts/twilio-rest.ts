@@ -1,5 +1,7 @@
 /** Minimal Twilio REST helper for the test scripts. Credentials come from the env and are never printed. */
-export const LINE_NUMBER = "+61851222255"; // the shop line under test (Perth 08)
+export const LINE_NUMBER = "+61862193046"; // the shop line under test (08 6219 3046, Fremantle WA)
+/** Our own older number, kept as the caller for scripted test calls (shows as Christmas Island in libphonenumber). */
+export const TEST_CALLER_NUMBER = "+61851222255";
 
 const sid = () => process.env.TWILIO_ACCOUNT_SID ?? "";
 const auth = () => "Basic " + Buffer.from(`${sid()}:${process.env.TWILIO_AUTH_TOKEN ?? ""}`).toString("base64");
