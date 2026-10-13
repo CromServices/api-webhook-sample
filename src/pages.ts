@@ -33,7 +33,14 @@ function nav(): string {
     .join("")}</p>`;
 }
 
-function shell(body: string): string {
+function shell(body: string, wide = false): string {
+  const main = wide ? '<main class="crom-shell" style="max-width:1500px">' : '<main class="crom-shell">';
+  const footer = wide
+    ? CROM_FOOTER.replace(
+        '<footer class="crom-footer">',
+        '<footer class="crom-footer" style="margin-top:16px">',
+      )
+    : CROM_FOOTER;
   return `<!doctype html>
 <html lang="en-AU">
 <head>
@@ -44,9 +51,9 @@ function shell(body: string): string {
 </head>
 <body>
 ${CROM_HEADER}
-<main class="crom-shell">
+${main}
 ${body}
-${CROM_FOOTER}
+${footer}
 </main>
 </body>
 </html>`;
@@ -61,16 +68,22 @@ function intro(title: string): string {
 }
 
 function person(line: PersonLine): string {
-  return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);">
-    <span><strong>${esc(line.name)}</strong> <span class="crom-note">${esc(line.want)}</span></span>
-    ${chips(line.chips)}
+  return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">
+      <strong>${esc(line.name)}</strong>
+      ${chips(line.chips)}
+    </div>
+    <span class="crom-note">${esc(line.want)}</span>
   </div>`;
 }
 
 function sheetSummary(line: SheetLine): string {
-  return `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--border);">
-    <span><strong>${esc(line.date)} · ${esc(line.name)}</strong> <span class="crom-note">${esc(line.phone)} · ${esc(line.want)} · ${esc(line.status)}</span></span>
-    ${chips(line.chips)}
+  return `<div style="padding:3px 0;border-top:1px solid var(--border);font-size:14px;">
+    <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">
+      <strong>${esc(line.date)} · ${esc(line.name)}</strong>
+      ${chips(line.chips)}
+    </div>
+    <span class="crom-note">${esc(line.phone)} · ${esc(line.want)} · ${esc(line.status)}</span>
   </div>`;
 }
 
@@ -86,13 +99,19 @@ function column(title: string, view: ColumnView): string {
   const notes = view.notes
     .map((line) => `<p style="margin:8px 0 0;"><span class="crom-chip">${esc(line)}</span></p>`)
     .join("");
-  return `<section style="border:1px solid var(--border);border-radius:12px;padding:10px 12px;">
+  return `<section style="border:1px solid var(--border);border-radius:12px;padding:8px 12px;">
     <h2 class="crom-h3">${esc(title)}</h2>
-    <p style="font-weight:600;margin:6px 0 0;">${esc(view.headline)}</p>
-    <h3 class="crom-h3" style="margin-top:8px;">${esc(STORY.facebook)}</h3>
-    ${facebook}
-    <h3 class="crom-h3" style="margin-top:8px;">${esc(STORY.sheet)}</h3>
-    ${sheet}
+    <p style="font-weight:600;margin:4px 0 0;font-size:15px;">${esc(view.headline)}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-top:6px;">
+      <div>
+        <h3 class="crom-h3">${esc(STORY.facebook)}</h3>
+        ${facebook}
+      </div>
+      <div>
+        <h3 class="crom-h3">${esc(STORY.sheet)}</h3>
+        ${sheet}
+      </div>
+    </div>
     ${notes}
   </section>`;
 }
@@ -231,9 +250,12 @@ export function comparePage(before: Snapshot | null, after: Snapshot | null, vie
     ${triageBody(triageFrom(before))}
   </section>`);
   }
-  return shell(`${intro(STORY.sideBySide)}
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:12px;">
+  return shell(
+    `${intro(STORY.sideBySide)}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
     ${column(STORY.before, shot(before))}
     ${column(STORY.after, shot(after))}
-  </div>`);
+  </div>`,
+    true,
+  );
 }
