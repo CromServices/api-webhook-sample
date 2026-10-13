@@ -16,6 +16,15 @@ const app = createApp({
   dataSeedPath: process.env.DATA_SEED_PATH || undefined,
   // All unset by default: the phone line routes answer 404 until these are set
   // with `fly secrets set` (never in fly.toml or the repo).
+  whatsApp:
+    process.env.WHATSAPP_ENABLED === "1"
+      ? {
+          authToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+          publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
+          viewUser: process.env.WHATSAPP_INBOX_USER ?? "",
+          viewPassword: process.env.WHATSAPP_INBOX_PASSWORD ?? "",
+        }
+      : undefined,
   phoneLine: {
     lookupKey: process.env.PHONE_LINE_KEY ?? "",
     viewUser: process.env.CALL_LOG_USER ?? "",
