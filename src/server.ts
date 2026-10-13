@@ -23,6 +23,10 @@ const app = createApp({
           publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "",
           viewUser: process.env.WHATSAPP_INBOX_USER ?? "",
           viewPassword: process.env.WHATSAPP_INBOX_PASSWORD ?? "",
+          chat: {
+            orderUrl: process.env.SHOP_ORDER_URL || undefined,
+            replyPromise: process.env.WHATSAPP_REPLY_PROMISE || undefined,
+          },
         }
       : undefined,
   phoneLine: {

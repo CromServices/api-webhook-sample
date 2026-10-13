@@ -26,6 +26,10 @@ export type ChatEffect = { type: "lead"; lead: Lead } | { type: "handoff"; hando
 
 export type ChatResult = { phase: ChatPhase; replies: string[]; effects: ChatEffect[] };
 
+/** Shop settings for the chat. orderUrl unset = no "order online" line. */
+export type ChatConfig = { orderUrl?: string; replyPromise?: string };
+export const DEFAULT_REPLY_PROMISE = "as soon as they can";
+
 export const TEXTS = {
   welcome: `Hi, thanks for messaging ${SHOP_NAME}. I can check where your order is, or take an enquiry (catering, bookings, bulk orders) for ${OWNER_NAME}. Just tell me which, or send your order number.`,
   askOrder: "Sure. What's your order number? It's the 4 digits on your confirmation.",
@@ -36,11 +40,12 @@ export const TEXTS = {
   leadName: `Happy to help. What's your name?`,
   leadNeed: (name: string) =>
     `Thanks ${name}. What do you need, and for when? (For example: "coffee and banana bread for 12 people, Friday 9am".)`,
-  leadDone: (name: string) =>
-    `Got it, thanks ${name}. I've passed this to ${OWNER_NAME}, who will reply on this chat, usually the same day.`,
+  leadDone: (name: string, promise: string = DEFAULT_REPLY_PROMISE) =>
+    `Got it, thanks ${name}. I've passed this to ${OWNER_NAME}, who will reply on this chat ${promise}.`,
   person: `No problem. I've let ${OWNER_NAME} know you'd like to chat, and they'll reply here as soon as possible.`,
   change: `I can't change orders here, but I've passed your message to ${OWNER_NAME}, who will reply as soon as possible.`,
-  newOrder: `I can't take new orders on this chat, but you can order on our website. For a big or catering order, reply "enquiry" and I'll pass the details to ${OWNER_NAME}.`,
+  newOrder: (orderUrl?: string) =>
+    `I can't take new orders on this chat${orderUrl ? `, but you can order at ${orderUrl}` : ""}. For a big or catering order, reply "enquiry" and I'll pass the details to ${OWNER_NAME}.`,
   hours: SHOP_INFO.hours,
   where: SHOP_INFO.where,
 } as const;
@@ -81,7 +86,9 @@ function startOrder(source: OrderSource, number: string, from: string): ChatResu
   return { phase: { kind: "ask_email", order: number, tries: 0 }, replies: [TEXTS.askEmail], effects: [] };
 }
 
-export function chatStep(source: OrderSource, phase: ChatPhase, from: string, raw: string): ChatResult {
+export function chatStep(source: OrderSource, phase: ChatPhase, from: string, raw: string, config: ChatConfig = {}): ChatResult {
+  const orderUrl = config.orderUrl && /^https:\/\/\S+$/.test(config.orderUrl) ? config.orderUrl : undefined;
+  const promise = config.replyPromise?.trim().slice(0, 60) || DEFAULT_REPLY_PROMISE;
   const text = String(raw ?? "").slice(0, 600).trim();
   const handoff = (reason: Handoff["reason"], reply: string): ChatResult => ({
     phase: { kind: "idle" },
@@ -114,7 +121,7 @@ export function chatStep(source: OrderSource, phase: ChatPhase, from: string, ra
     }
     case "lead_need": {
       const lead: Lead = { name: phase.name, need: text, from };
-      return { phase: { kind: "idle" }, replies: [TEXTS.leadDone(phase.name)], effects: [{ type: "lead", lead }] };
+      return { phase: { kind: "idle" }, replies: [TEXTS.leadDone(phase.name, promise)], effects: [{ type: "lead", lead }] };
     }
     case "idle": {
       const n = orderNumberIn(text);
@@ -122,7 +129,7 @@ export function chatStep(source: OrderSource, phase: ChatPhase, from: string, ra
       if (RX.person.test(text)) return handoff("person", TEXTS.person);
       if (RX.lead.test(text)) return { phase: { kind: "lead_name" }, replies: [TEXTS.leadName], effects: [] };
       if (n) return startOrder(source, n, from);
-      if (RX.newOrder.test(text)) return { phase, replies: [TEXTS.newOrder], effects: [] };
+      if (RX.newOrder.test(text)) return { phase, replies: [TEXTS.newOrder(orderUrl)], effects: [] };
       if (RX.where.test(text)) return { phase, replies: [TEXTS.where], effects: [] };
       if (RX.hours.test(text)) return { phase, replies: [TEXTS.hours], effects: [] };
       if (RX.status.test(text)) return { phase: { kind: "ask_order" }, replies: [TEXTS.askOrder], effects: [] };

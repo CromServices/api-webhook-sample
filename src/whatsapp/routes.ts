@@ -3,7 +3,7 @@ import { twilioSignature } from "../phone/twilio.ts";
 import { sampleOrderSource, type OrderSource } from "../phone/orders.ts";
 import { createRateLimiter } from "../phone/lookup.ts";
 import { timingSafeEqual } from "node:crypto";
-import { chatStep, type ChatPhase, type Handoff, type Lead } from "./flow.ts";
+import { chatStep, type ChatConfig, type ChatPhase, type Handoff, type Lead } from "./flow.ts";
 import { inboxPage } from "./page.ts";
 
 /**
@@ -27,6 +27,8 @@ export type WhatsAppOptions = {
   perSenderPerMinute?: number;
   /** Chat goes back to the start after this much quiet. */
   idleMs?: number;
+  /** Shop settings: order link (https only) and reply-time promise. */
+  chat?: ChatConfig;
 };
 
 export type InboxRow =
@@ -57,7 +59,7 @@ export function mountWhatsApp(app: Express, opts: WhatsAppOptions = {}) {
   function handle(from: string, text: string): string[] {
     const prev = chats.get(from);
     const phase: ChatPhase = prev && now() - prev.at < idleMs ? prev.phase : { kind: "idle" };
-    const out = chatStep(orders, phase, from, text);
+    const out = chatStep(orders, phase, from, text, opts.chat);
     chats.set(from, { phase: out.phase, at: now() });
     for (const e of out.effects) {
       inbox.push(e.type === "lead" ? { at: now(), kind: "lead", lead: e.lead } : { at: now(), kind: "handoff", handoff: e.handoff });

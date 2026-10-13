@@ -68,12 +68,12 @@ test("detours: hours, location, person, change, new order, hello", () => {
   assert.equal(run(OTHER, ["what's your address"])[0]!.replies[0], TEXTS.where);
   assert.equal(run(OTHER, ["can I talk to Sam"])[0]!.replies[0], TEXTS.person);
   assert.equal(run(ARI, ["I want to cancel order 1042"])[0]!.replies[0], TEXTS.change);
-  assert.equal(run(OTHER, ["can i order a flat white"])[0]!.replies[0], TEXTS.newOrder);
+  assert.equal(run(OTHER, ["can i order a flat white"])[0]!.replies[0], TEXTS.newOrder());
   assert.equal(run(OTHER, ["hello"])[0]!.replies[0], TEXTS.welcome);
 });
 
 test("customer copy has no bot wording", () => {
-  const all = Object.values(TEXTS).map((t) => (typeof t === "function" ? t("X") : t)).join(" ");
+  const all = Object.values(TEXTS).map((t) => (typeof t === "function" ? (t as (a: string) => string)("X") : t)).join(" ");
   assert.doesNotMatch(all, /\b(bot|AI|automated|assistant|robot|GPT)\b/i);
 });
 
@@ -132,4 +132,28 @@ test("inbox needs login; rate limit per sender", async () => {
     assert.match(await send(), /<Message>/);
     assert.doesNotMatch(await send(), /<Message>/);
   } finally { s.close(); }
+});
+
+test("new-order reply: no website line unless the shop sets an https link", () => {
+  const plain = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white").replies[0]!;
+  assert.doesNotMatch(plain, /website|order at/i);
+  const linked = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white", { orderUrl: "https://samscafe.example/order" }).replies[0]!;
+  assert.match(linked, /order at https:\/\/samscafe\.example\/order\./);
+  const bad = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white", { orderUrl: "javascript:alert(1)" }).replies[0]!;
+  assert.equal(bad, plain);
+});
+
+test("reply-time promise is a shop setting with a safe default", () => {
+  const done = (cfg?: { replyPromise?: string }) =>
+    chatStep(src, { kind: "lead_need", name: "Priya" }, OTHER, "coffee for 12", cfg).replies[0]!;
+  assert.match(done(), /reply on this chat as soon as they can\.$/);
+  assert.doesNotMatch(done(), /same day/);
+  assert.match(done({ replyPromise: "within 2 hours" }), /reply on this chat within 2 hours\.$/);
+  assert.match(done({ replyPromise: "   " }), /as soon as they can\.$/);
+});
+
+test("Sam's page says updates were sent straight away (no machine wording)", () => {
+  const html = inboxPage([]);
+  assert.match(html, /Order updates were sent straight away\./);
+  assert.doesNotMatch(html, /automatic/i);
 });

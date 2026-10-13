@@ -29,7 +29,7 @@ export function inboxPage(rows: readonly InboxRow[], timeZone = "Australia/Perth
 body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6f3ee;color:#222}main{max-width:720px;margin:0 auto;padding:24px 16px}
 h1{font-size:1.4rem;margin:0 0 4px}ul{list-style:none;padding:0}li{background:#fff;border-radius:12px;padding:14px 16px;margin:12px 0;border-left:6px solid #2a7d4f}
 li.hand{border-left-color:#c77d16}p{margin:6px 0}small{color:#666}footer{color:#777;font-size:.85rem;margin-top:32px}
-</style></head><body><main><h1>WhatsApp messages for Sam</h1><p>New enquiries and chats that need you. Order updates were answered automatically.</p>
+</style></head><body><main><h1>WhatsApp messages for Sam</h1><p>New enquiries and chats that need you. Order updates were sent straight away.</p>
 ${items.length ? `<ul>${items.join("")}</ul>` : "<p>Nothing waiting for you.</p>"}
 <footer>Crom Services, Australia</footer></main></body></html>`;
 }
