@@ -9,4 +9,5 @@
 # JSON fixtures, README files, and every other .ts file are allow-listed.
 #
 # The check also boots the app and scans the HTML each customer route returns.
-# There is no footer exception. A contact address on a rendered page fails.
+# Every img src, img/source srcset, and stylesheet on those pages is fetched.
+# A response that is not HTTP 200 fails the check. There is no footer exception.

@@ -16,5 +16,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Banned copy in source and rendered pages
+      - name: Banned copy and page assets
         run: bash scripts/check-banned.sh

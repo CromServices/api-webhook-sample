@@ -185,6 +185,56 @@ function scanRenderedHtml(raw, patterns) {
   return [...labels];
 }
 
+function tagAttr(tag, name) {
+  const match = new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)'|([^\\s"'=<>]+))`, "i").exec(tag);
+  if (!match) return "";
+  return match[2] ?? match[3] ?? match[4] ?? "";
+}
+
+/** img/source src + srcset, and stylesheet hrefs, resolved against the page. */
+function collectAssets(html, pageUrl) {
+  const found = [];
+  for (const match of html.matchAll(/<(img|source|link)\b[^>]*>/gi)) {
+    const tag = match[0];
+    const name = match[1].toLowerCase();
+    const raws = [];
+    if (name === "link") {
+      if (!/\bstylesheet\b/i.test(tagAttr(tag, "rel"))) continue;
+      const href = tagAttr(tag, "href");
+      if (href) raws.push(href);
+    } else {
+      const src = tagAttr(tag, "src");
+      if (src) raws.push(src);
+      const srcset = tagAttr(tag, "srcset");
+      if (srcset) {
+        for (const part of srcset.split(",")) {
+          const url = part.trim().split(/\s+/)[0];
+          if (url) raws.push(url);
+        }
+      }
+    }
+    for (const raw of raws) {
+      if (/^(data|blob):/i.test(raw)) continue;
+      try {
+        found.push(new URL(raw, pageUrl).href);
+      } catch {
+        found.push(raw);
+      }
+    }
+  }
+  return [...new Set(found)];
+}
+
+async function fetchAsset(url) {
+  try {
+    const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(20000) });
+    await res.arrayBuffer();
+    return { status: res.status };
+  } catch (err) {
+    return { status: 0, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 function freePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -251,10 +301,13 @@ async function scanRunningApp(patterns) {
   });
   const base = `http://127.0.0.1:${port}`;
   let hits = 0;
+  const assetStatus = new Map();
+  let assetFetches = 0;
   try {
     await waitForHealth(base, child);
     for (const route of RENDERED_ROUTES) {
-      const res = await fetch(`${base}${route.path}`, { redirect: "manual" });
+      const pageUrl = `${base}${route.path}`;
+      const res = await fetch(pageUrl, { redirect: "manual" });
       const body = await res.text();
       if (res.status !== route.status) {
         hits += 1;
@@ -263,6 +316,18 @@ async function scanRunningApp(patterns) {
       for (const label of scanRenderedHtml(body, patterns)) {
         hits += 1;
         console.error(`rendered GET ${route.path}: banned ${label}`);
+      }
+      for (const asset of collectAssets(body, pageUrl)) {
+        if (!assetStatus.has(asset)) {
+          assetStatus.set(asset, await fetchAsset(asset));
+          assetFetches += 1;
+        }
+        const result = assetStatus.get(asset);
+        if (result.status !== 200) {
+          hits += 1;
+          const detail = result.error ? `error ${result.error}` : String(result.status);
+          console.error(`rendered GET ${route.path}: asset ${detail} ${asset}`);
+        }
       }
     }
   } catch (err) {
@@ -282,7 +347,7 @@ async function scanRunningApp(patterns) {
       });
     });
   }
-  return hits;
+  return { hits, assetFetches };
 }
 
 const patterns = loadPatterns(path.join(root, "scripts/banned-patterns.txt"));
@@ -304,11 +369,14 @@ for (const rel of files) {
   }
 }
 
-failed += await scanRunningApp(patterns);
+const rendered = await scanRunningApp(patterns);
+failed += rendered.hits;
 
 if (failed > 0) {
   console.error(`banned check failed: ${failed} hit${failed === 1 ? "" : "s"}`);
   process.exit(1);
 }
 
-console.log(`banned check passed (${files.length} files, ${RENDERED_ROUTES.length} rendered routes)`);
+console.log(
+  `banned check passed (${files.length} files, ${RENDERED_ROUTES.length} rendered routes, ${rendered.assetFetches} assets)`,
+);
