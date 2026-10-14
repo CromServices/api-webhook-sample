@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import type { AddressInfo } from "node:net";
-import { chatStep, TEXTS, type ChatPhase } from "../src/whatsapp/flow.ts";
-import { mountWhatsApp, twiml } from "../src/whatsapp/routes.ts";
-import { inboxPage, maskNumber } from "../src/whatsapp/page.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { twilioSignature } from "../src/phone/twilio.ts";
+import { chatStep, TEXTS, type ChatPhase } from "../../src/whatsapp/flow.ts";
+import { mountWhatsApp, twiml } from "../../src/whatsapp/routes.ts";
+import { inboxPage, maskNumber } from "../../src/whatsapp/page.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { twilioSignature } from "../../src/phone/twilio.ts";
 
 const src = sampleOrderSource();
 const ARI = "whatsapp:+61491570156"; // phone on order 1042

@@ -27,7 +27,7 @@ The public pages are a small shop and a stock count. Placing an order sends it, 
 | `src/story.ts` | Customer-facing labels |
 | `src/landing.ts` | Shared crom-shared v1.0.2 header and footer, pinned |
 | `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
-| `test/core/`, `test/phone/` | `node:test` suites, one folder per feature (shared webhook core, phone line) |
+| `test/core/`, `test/phone/`, `test/whatsapp/` | `node:test` suites, one folder per feature (shared webhook core, phone line, WhatsApp) |
 | `scripts/phone/` | Phone line tools (test calls, intent eval, transcript loop) |
 | `docs/` | GitHub Pages page (the earlier static copy; the live demo is the Fly app) |
 | `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
