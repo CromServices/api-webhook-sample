@@ -1,4 +1,5 @@
 name: CI (L-054)
+# STAGED: move to .github/workflows/ci.yml to switch on (pushing workflow files needs a token with the GitHub `workflow` scope).
 # Fails on banned patterns (secrets, real phone numbers, personal emails, owner name,
 # vendor wording in public copy, phrase datasets in public folders) and on failing tests.
 # Mirrors CromServices/crom-shared ci/workflows/node-ci.yml (that file is not yet under
