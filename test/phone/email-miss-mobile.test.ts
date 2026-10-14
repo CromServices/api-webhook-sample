@@ -1,11 +1,11 @@
 /** Director 13 Oct: a spoken email that doesn't match -> ask for the mobile on the order next. */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES } from "../src/phone/flow.ts";
-import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES } from "../../src/phone/flow.ts";
+import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
 
 async function call(turns: string[]) {
   const orders = sampleOrderSource();

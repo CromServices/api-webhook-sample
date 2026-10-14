@@ -3,12 +3,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import type WebSocket from "ws";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES } from "../src/phone/flow.ts";
-import { lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { bridgeCall, streamToken } from "../src/phone/twilio.ts";
-import type { VoiceEvents } from "../src/phone/voice/provider.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES } from "../../src/phone/flow.ts";
+import { lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { bridgeCall, streamToken } from "../../src/phone/twilio.ts";
+import type { VoiceEvents } from "../../src/phone/voice/provider.ts";
 
 const TOKEN = "test-twilio-token-not-real";
 const SID = "CA00000000000000000000000000call6";

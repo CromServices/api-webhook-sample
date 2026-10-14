@@ -2,12 +2,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
-import { score, type Row } from "../scripts/eval-intents.ts";
-import { maskPhones, findIssues, parseTrace, type CallTurn } from "../scripts/transcript-loop.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
+import { score, type Row } from "../../scripts/phone/eval-intents.ts";
+import { maskPhones, findIssues, parseTrace, type CallTurn } from "../../scripts/phone/transcript-loop.ts";
 
 const turns: CallTurn[] = JSON.parse(readFileSync(new URL("./fixtures/call-turns.json", import.meta.url), "utf8"));
 const au: Row[] = JSON.parse(readFileSync(new URL("./fixtures/phrases-au.json", import.meta.url), "utf8"));

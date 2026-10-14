@@ -2,10 +2,10 @@
  * Scripted calls shared by the tests and the call log screenshot. Mock phone,
  * mock texts, real flow, real read-only lookup on the sample order book.
  */
-import { openCallLog, type CallLog } from "../src/phone/calllog.ts";
-import { lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource, type OrderSource } from "../src/phone/orders.ts";
-import { CallSession, type Telephony } from "../src/phone/session.ts";
+import { openCallLog, type CallLog } from "../../src/phone/calllog.ts";
+import { lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource, type OrderSource } from "../../src/phone/orders.ts";
+import { CallSession, type Telephony } from "../../src/phone/session.ts";
 
 export type Turn = { heard: string } | { silence: true } | { hangUp: true };
 

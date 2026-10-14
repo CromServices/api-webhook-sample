@@ -1,12 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES, MAX_RETRIES, TOLD, detectIntent } from "../src/phone/flow.ts";
-import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
-import { readOrderNumber, sayDigits } from "../src/phone/normalise.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
-import { SHOP_INFO } from "../src/phone/shopinfo.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES, MAX_RETRIES, TOLD, detectIntent } from "../../src/phone/flow.ts";
+import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
+import { readOrderNumber, sayDigits } from "../../src/phone/normalise.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
+import { SHOP_INFO } from "../../src/phone/shopinfo.ts";
 
 async function call(turns: string[], owner: "answered" | "no_answer" = "no_answer") {
   const orders = sampleOrderSource();
@@ -147,7 +147,7 @@ describe("phone line: detours", () => {
   });
 });
 
-describe("phone line: Nate's check call, replayed", () => {
+describe("phone line: the owner's check call, replayed", () => {
   it('"A thousand and forty-two is my number." no longer misses', async () => {
     const { said } = await call(["A thousand and forty-two is my number."]);
     assert.notEqual(said[1], LINES.askOrderAgain);
@@ -172,7 +172,7 @@ describe("phone line: never repeats itself", () => {
     noRepeats(said);
     assert.equal(rang, 1);
   });
-  it("call 2 replay (Nate, 12 Oct): no sentence said twice in a row, and the number is understood", async () => {
+  it("call 2 replay (owner check, 12 Oct): no sentence said twice in a row, and the number is understood", async () => {
     const { said } = await call([
       "Account number 42",
       "A thousand and forty-two",

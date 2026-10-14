@@ -1,17 +1,17 @@
-/** Fixes from live call 7 (Nate, 13 Oct 18:40): outbound greeting gap, lost yes, dead air, waits, no-contact, bare name, noise. */
+/** Fixes from live call 7 (owner check call, 13 Oct 18:40): outbound greeting gap, lost yes, dead air, waits, no-contact, bare name, noise. */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import type { AddressInfo } from "node:net";
 import { WebSocketServer, type WebSocket } from "ws";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES, bareName } from "../src/phone/flow.ts";
-import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
-import { bridgeCall, digitsStillComing, isMobileNumber, streamToken } from "../src/phone/twilio.ts";
-import type { VoiceEvents } from "../src/phone/voice/provider.ts";
-import { XaiVoiceProvider } from "../src/phone/voice/xai.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES, bareName } from "../../src/phone/flow.ts";
+import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
+import { bridgeCall, digitsStillComing, isMobileNumber, streamToken } from "../../src/phone/twilio.ts";
+import type { VoiceEvents } from "../../src/phone/voice/provider.ts";
+import { XaiVoiceProvider } from "../../src/phone/voice/xai.ts";
 
 const TOKEN = "test-twilio-token-not-real";
 const SID = "CA00000000000000000000000000call7";

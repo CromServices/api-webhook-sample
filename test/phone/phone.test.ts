@@ -4,19 +4,19 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createApp } from "../src/app.ts";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { ACTION_TYPES, ASKED, LINES, TOLD, detectIntent, initialState, step } from "../src/phone/flow.ts";
-import { NO_MATCH_SAY, createRateLimiter, lookupOrder } from "../src/phone/lookup.ts";
+import { createApp } from "../../src/app.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { ACTION_TYPES, ASKED, LINES, TOLD, detectIntent, initialState, step } from "../../src/phone/flow.ts";
+import { NO_MATCH_SAY, createRateLimiter, lookupOrder } from "../../src/phone/lookup.ts";
 import {
   normaliseAuPhone,
   normaliseContact,
   normaliseEmail,
   normaliseOrderNumber,
   spokenDigits,
-} from "../src/phone/normalise.ts";
-import { SAMPLE_ORDERS, sampleOrderSource } from "../src/phone/orders.ts";
-import { callLogPage, showPhone } from "../src/phone/page.ts";
+} from "../../src/phone/normalise.ts";
+import { SAMPLE_ORDERS, sampleOrderSource } from "../../src/phone/orders.ts";
+import { callLogPage, showPhone } from "../../src/phone/page.ts";
 import { SCRIPTS, TEST_OWNER_TEXT_TO, runScript } from "./phone-scripts.ts";
 
 const KEY = "test-phone-line-key";

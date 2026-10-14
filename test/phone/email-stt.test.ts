@@ -1,10 +1,10 @@
 /** Scenario re-run 13 Oct (change request): STT lost the "@" in "dom dot p at example dot com". */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { initialState, step, type FlowState } from "../src/phone/flow.ts";
-import { lookupOrder } from "../src/phone/lookup.ts";
-import { emailMatchesHeard, normaliseContact } from "../src/phone/normalise.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
+import { initialState, step, type FlowState } from "../../src/phone/flow.ts";
+import { lookupOrder } from "../../src/phone/lookup.ts";
+import { emailMatchesHeard, normaliseContact } from "../../src/phone/normalise.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
 
 const HEARD = ["dom.padexample.com", "dom dot p at example dot com", "dom.p@example.com", "dom.p example.com", "Dom dot pat example dot com.", "It's dom.patexample.com", "dom.p at example.com"];
 
