@@ -1,0 +1,15 @@
+# Allow-list. Code and tests are skipped because they are not in the public scan.
+# Public scan (what customers see):
+#   docs/**/*.html
+#   shared/landing.ts          header and footer template
+#   features/**/pages.ts       page templates
+#   features/**/story.ts       page copy
+#   features/**/fixtures/**/*.{html,txt,md}   capture text
+#
+# JSON fixtures, README files, and every other .ts file are allow-listed.
+#
+# markup: this exact snippet is removed before scanning. It is the pinned
+# crom-shared footer line the pages are required to show. Any other email,
+# including this address outside this snippet, still fails.
+
+markup:<p class="crom-footer__line">Crom Services · Australia · <a href="mailto:cromservices@gmail.com">cromservices@gmail.com</a></p>

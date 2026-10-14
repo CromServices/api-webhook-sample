@@ -10,7 +10,9 @@ A public sample for one job: catering enquiries from a Facebook lead form land i
 
 The Facebook app secret and the verify token are generated in memory when `META_APP_SECRET` and `META_VERIFY_TOKEN` are unset. They are never written into the repo. `DEMO_ADMIN_TOKEN` unlocks the private controls used to run the two ways; leave it unset and those controls stay closed. The original signed check still uses the published value `crom-demo-webhook-secret-v1`.
 
-Public pages stay in plain language (names, phones, what they asked for). The browser title is the only place that says sample. Labels live in `src/story.ts`. Counts on the pages are read from the stored runs.
+Public pages stay in plain language (names, phones, what they asked for). The browser title is the only place that says sample. Labels live in `features/ad-leads/story.ts`. Counts on the pages are read from the stored runs.
+
+Shop-to-stock orders live in `features/order-sync/`. Catering lead ads live in `features/ad-leads/`. The header, footer and signature check live in `shared/`. `src/server.ts` starts both. Existing lead routes stay where they were. The shop home is also at `GET /shop-and-stock`, so `GET /` stays the leads page. Shop pages are `GET /shop`, `GET /stock`, `GET /history` and `GET /demo`.
 
 - `GET /` shows the leads Facebook has and the rows in the sheet, from the stored file.
 - `GET /sheet` is the sheet: date, name, phone, email, what they want, source form, and New or Contacted.
@@ -26,20 +28,12 @@ The old way stores the lead and waits. A delayed hand copy then writes the rows 
 
 | Path | Purpose |
 |---|---|
-| `src/verify.ts` | Sign and verify helpers (timing-safe compare) |
-| `src/leadgen.ts` | Leadgen notice, lead-details tidy, Australian phone |
-| `src/graph.ts` | Local stand-in for the lead-details lookup |
-| `src/store.ts` | Facebook leads, sheet rows, alerts, attempts, the two saved runs |
-| `src/deliver.ts` | Sends one notice and tries a failed delivery once |
-| `src/scenario.ts` | The same fictional leads, run both ways |
-| `src/present.ts` | Turns stored rows into the words on the pages |
-| `src/pages.ts` | Page HTML |
-| `src/story.ts` | Customer-facing labels |
-| `src/app.ts` | `createApp()`: public pages, both receivers, private controls |
-| `src/landing.ts` | crom-shared v1.0.2 header and footer, pinned |
-| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
-| `src/run-sample.ts` | Runs both ways and writes the notes |
-| `test/` | `node:test` suites |
+| `shared/verify.ts` | Sign and verify helpers (timing-safe compare) |
+| `shared/landing.ts` | crom-shared v1.0.2 header and footer, pinned |
+| `features/ad-leads/` | Lead ads sample: code, tests, fixtures, README |
+| `features/order-sync/` | Shop-to-stock sample: code, tests, fixtures, README |
+| `src/compose.ts` | One server, both samples, existing routes kept |
+| `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `DATA_PATH`, `ORDER_DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
 | `docs/` | Plain-language page for GitHub Pages |
 | `Dockerfile`, `fly.toml` | Disposable host (`crom-api-webhook-demo`, `syd`). This branch does not deploy. |
 
@@ -118,7 +112,7 @@ Deploy: a push to `main` runs `.github/workflows/fly.yml`, which deploys to Fly 
 ## Reuse for a new job
 
 1. **Start from the template**: use [CromServices/crom-ts-api-starter](https://github.com/CromServices/crom-ts-api-starter) and set `starter.config.ref` in `package.json` to the starter commit you started from.
-2. **Bring the webhook code**: copy `src/verify.ts` and the `/webhook` route from `src/app.ts`, and set the signature header name and secret source for the job's sender.
+2. **Bring the webhook code**: copy `shared/verify.ts` and the `/webhook` route from `features/order-sync/app.ts`, and set the signature header name and secret source for the job's sender.
 3. **Set the app name** in `fly.toml` and keep secrets in `fly secrets set WEBHOOK_SECRET=...`, never in the repo.
 4. **Deploy** and put the URL under **Live link**.
 
