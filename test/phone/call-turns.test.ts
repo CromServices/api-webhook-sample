@@ -1,7 +1,7 @@
 /** Regression tests fed by scripts/transcript-loop.ts from real (masked) call transcripts. */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { openCallLog } from "../../src/phone/calllog.ts";
 import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
 import { sampleOrderSource } from "../../src/phone/orders.ts";
@@ -10,7 +10,11 @@ import { score, type Row } from "../../scripts/phone/eval-intents.ts";
 import { maskPhones, findIssues, parseTrace, type CallTurn } from "../../scripts/phone/transcript-loop.ts";
 
 const turns: CallTurn[] = JSON.parse(readFileSync(new URL("./fixtures/call-turns.json", import.meta.url), "utf8"));
-const au: Row[] = JSON.parse(readFileSync(new URL("./fixtures/phrases-au.json", import.meta.url), "utf8"));
+// Small made-up phrase set in the repo; the fuller internal list loads only when PHRASES_AU_PATH points at it (kept out of this repo).
+const au: Row[] = [
+  ...JSON.parse(readFileSync(new URL("./fixtures/phrases-sample.json", import.meta.url), "utf8")),
+  ...(process.env.PHRASES_AU_PATH && existsSync(process.env.PHRASES_AU_PATH) ? JSON.parse(readFileSync(process.env.PHRASES_AU_PATH, "utf8")) : []),
+];
 
 describe("phone line: real call turns (regression)", () => {
   it("never holds a real caller number", () => {
@@ -60,7 +64,7 @@ describe("phone line: transcript loop", () => {
   });
 });
 
-describe("phone line: own Australian phrase list", () => {
+describe(`phone line: Australian phrase list (${au.length} phrases${process.env.PHRASES_AU_PATH ? ", incl. internal set" : ", repo sample"})`, () => {
   it("every phrase gets the right handling", () => {
     const s = score(au);
     assert.deepEqual(s.misses.map((m) => `${m.text} -> ${m.got}`), []);

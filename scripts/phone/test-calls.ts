@@ -1,9 +1,9 @@
 /**
- * Scripted test calls to the shop line. ONLY ever rings LINE_NUMBER (+61 8 6219 3046),
- * from our own TEST_CALLER_NUMBER (+61 8 5122 2255). The caller side is TwiML (<Say>/<Pause>); the line answers
+ * Scripted test calls to the shop line. ONLY ever rings SHOP_LINE_NUMBER,
+ * from our own TEST_CALLER_NUMBER (both read from the env, never stored here). The caller side is TwiML (<Say>/<Pause>); the line answers
  * through the deployed app. Writes calls-spend.csv; hard stop at A$40 running total.
  *   npx tsx scripts/phone/test-calls.ts [scenario ...] [--out dir]
- * Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (never printed), AUD_PER_USD (default 1.55, estimate).
+ * Env: SHOP_LINE_NUMBER, TEST_CALLER_NUMBER, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN (never printed), AUD_PER_USD (default 1.55, estimate).
  */
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
@@ -42,11 +42,12 @@ async function main() {
       console.log(`hard stop: running total A$${running.toFixed(2)} >= A$${CAP_AUD}`);
       break;
     }
-    const to = LINE_NUMBER;
-    if (to !== "+61862193046" || TEST_CALLER_NUMBER !== "+61851222255") throw new Error("refusing: only the shop line may be called, from our own number");
+    const to = LINE_NUMBER();
+    const from = TEST_CALLER_NUMBER();
+    if (to === from || !/^\+618/.test(to) || !/^\+618/.test(from)) throw new Error("refusing: only the shop line may be called, from our own number");
     const call = await tw("/Calls.json", {
       To: to,
-      From: TEST_CALLER_NUMBER,
+      From: from,
       Twiml: `<Response>${twiml}<Hangup/></Response>`,
       Record: "true",
       RecordingChannels: "dual",

@@ -41,7 +41,9 @@ export function score(rows: Row[]) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const sets: Array<[string, Row[]]> = [];
   const here = path.dirname(new URL(import.meta.url).pathname);
-  sets.push(["own AU phrases", JSON.parse(readFileSync(path.join(here, "../../test/phone/fixtures/phrases-au.json"), "utf8"))]);
+  sets.push(["sample phrases", JSON.parse(readFileSync(path.join(here, "../../test/phone/fixtures/phrases-sample.json"), "utf8"))]);
+  const own = process.env.PHRASES_AU_PATH; // internal AU phrase list, kept out of this repo
+  if (own && existsSync(own)) sets.push(["own AU phrases (internal)", JSON.parse(readFileSync(own, "utf8"))]);
   const calls = path.join(here, "../../test/phone/fixtures/call-turns.json");
   if (existsSync(calls)) sets.push(["real call turns", JSON.parse(readFileSync(calls, "utf8")).filter((r: Row) => r.expect)]);
   const dir = process.env.PHRASEBANK_DIR;

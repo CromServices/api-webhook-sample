@@ -13,10 +13,10 @@ async function main() {
   if (!process.argv.includes("--yes-call-owner-once")) throw new Error("refusing: pass --yes-call-owner-once");
   if (!/^\+614\d{8}$/.test(target)) throw new Error("refusing: OWNER_TEST_NUMBER missing or not an AU mobile in +614… form");
   const allowed = (process.env.OWNER_TEST_NUMBER ?? "").replace(/\s+/g, "");
-  if (target !== allowed || target === LINE_NUMBER) throw new Error("refusing: target is not OWNER_TEST_NUMBER");
+  if (target !== allowed || target === LINE_NUMBER()) throw new Error("refusing: target is not OWNER_TEST_NUMBER");
   const call = await tw("/Calls.json", {
     To: target,
-    From: LINE_NUMBER,
+    From: LINE_NUMBER(),
     Url: `${BASE}/phone/voice`,
     Method: "POST",
     Record: "true",

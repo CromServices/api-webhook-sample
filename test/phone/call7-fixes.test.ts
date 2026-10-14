@@ -194,7 +194,7 @@ describe("call 7 fix 7: higher interruption bar on mobiles", () => {
   it("isMobileNumber", () => {
     assert.equal(isMobileNumber("+61491570110"), true);
     assert.equal(isMobileNumber("0491 570 110"), true);
-    assert.equal(isMobileNumber("+61862193046"), false);
+    assert.equal(isMobileNumber("+61855501234"), false);
   });
   it("mobile: a 60 ms noise burst doesn't stop the line; 160 ms of speech does", async () => {
     const { p, ws } = bridge({}, { caller: MOBILE }); ws.echo = false; p.hold = true;
@@ -213,13 +213,13 @@ describe("call 7 fix 7: higher interruption bar on mobiles", () => {
   });
   it("mobile: the line isn't marked interruptible to xAI (our VAD does the stopping)", async () => {
     const m = bridge({}, { caller: MOBILE }); await wait(30);
-    const l = bridge({}, { caller: "+61862193046" }); await wait(30);
+    const l = bridge({}, { caller: "+61855501234" }); await wait(30);
     assert.equal(m.p.flags[0], false);
     assert.equal(l.p.flags[0], true);
     m.ws.close(); l.ws.close();
   });
   it("landline: 40 ms of speech still stops the line (unchanged)", async () => {
-    const { p, ws } = bridge({}, { caller: "+61862193046" }); ws.echo = false; p.hold = true;
+    const { p, ws } = bridge({}, { caller: "+61855501234" }); ws.echo = false; p.hold = true;
     await wait(30); await feed(ws, LOUD, 2);
     assert.equal(p.stops, 1);
     ws.close();
