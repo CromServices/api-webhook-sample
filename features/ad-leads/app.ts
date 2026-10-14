@@ -8,7 +8,7 @@ import { createGraphStandIn, type GraphLead, type GraphStandIn, type Registratio
 import { readLeadgenNotices, tidyLead, type LeadgenNotice } from "./leadgen.ts";
 import { alertsPage, comparePage, happenedPage, homePage, sheetPage } from "./pages.ts";
 import { openStore, type SheetStatus } from "./store.ts";
-import { verifyHmacHeader } from "./verify.ts";
+import { verifyHmacHeader } from "../../shared/verify.ts";
 
 /**
  * Published public sample secret for the original signed check.

@@ -1,4 +1,4 @@
-import { CROM_FOOTER, CROM_HEADER, THEME_CSS_URL } from "./landing.ts";
+import { CROM_FOOTER, CROM_HEADER, THEME_CSS_URL } from "../../shared/landing.ts";
 import {
   EMPTY_HEADLINE,
   historyLines,

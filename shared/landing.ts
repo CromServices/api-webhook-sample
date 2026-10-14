@@ -29,7 +29,7 @@ export const CROM_HEADER = `
  */
 export const CROM_FOOTER = `
 <footer class="crom-footer">
-  <p class="crom-footer__line">Crom Services · Australia · <a href="mailto:cromservices@gmail.com">cromservices@gmail.com</a></p>
+  <p class="crom-footer__line">Crom Services · Australia</p>
   <div class="crom-footer__credit">
     <span class="crom-when-light">
       <a href="https://cromservices.com.au" target="_blank" rel="noopener noreferrer"

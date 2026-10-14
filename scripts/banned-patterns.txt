@@ -1,0 +1,28 @@
+# Banned in customer-facing files: HTML, templates, page copy, and capture text.
+# Code and tests are not scanned (see scripts/banned-allow.txt).
+# Blank lines and lines starting with # are ignored.
+#
+# word            whole word, case-sensitive
+# word-i          whole word, case-insensitive
+# email           any email address
+# literal         exact substring
+# github          github.com link in page HTML
+
+word-i:demo
+word-i:mock
+word-i:fake
+word:Example
+word-i:bot
+word:AI
+word:GPT
+word:OpenAI
+word-i:webhook
+word-i:payload
+word-i:signature
+word-i:API key
+email
+literal:@gmail.com
+literal:cromservices@
+github:github.com
+literal:NL-
+literal:evt_

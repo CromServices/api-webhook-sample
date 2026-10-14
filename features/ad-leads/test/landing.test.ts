@@ -1,8 +1,8 @@
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
-import { createApp } from "../src/app.ts";
-import { THEME_CSS_URL } from "../src/landing.ts";
+import { createApp } from "../app.ts";
+import { THEME_CSS_URL } from "../../../shared/landing.ts";
 
 const PIN = "https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.2/";
 
@@ -44,7 +44,8 @@ describe("public pages", () => {
     assert.match(html, /<footer class="crom-footer">/);
     assert.match(html, /<a href="https:\/\/cromservices\.com\.au"[^>]*aria-label="Built by Crom Services"/);
     assert.match(html, /Crom Services · Australia/);
-    assert.match(html, /cromservices@gmail.com/);
+    assert.doesNotMatch(html, /cromservices@gmail\.com/);
+    assert.doesNotMatch(html, /mailto:/);
     assert.equal(THEME_CSS_URL, `${PIN}theme.css`);
     assert.ok(html.includes(`<link rel="stylesheet" href="${THEME_CSS_URL}">`));
     assert.equal((html.match(/rel="stylesheet"/g) ?? []).length, 1);

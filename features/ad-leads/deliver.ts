@@ -1,6 +1,6 @@
 import { leadgenBody, type LeadgenNotice } from "./leadgen.ts";
 import type { AttemptOutcome, Store } from "./store.ts";
-import { signBody } from "./verify.ts";
+import { signBody } from "../../shared/verify.ts";
 
 export type DeliverInput = {
   url: string;

@@ -1,11 +1,7 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import type { GraphLead } from "./graph.ts";
 import { metaTime } from "./leadgen.ts";
-
-export const FORM_NAME = "Catering enquiry";
-export const FORM_ID = "2002002002002";
-export const PAGE_ID = "3003003003003";
-export const AD_ID = "4004004004004";
-export const FORGED_ID = "9009009009009";
 
 export type Person = {
   leadgenId: string;
@@ -15,37 +11,31 @@ export type Person = {
   want: string;
 };
 
+type PeopleFixture = {
+  formName: string;
+  formId: string;
+  pageId: string;
+  adId: string;
+  forgedId: string;
+  people: {
+    jordan: Person;
+    riley: Person;
+    casey: Person;
+    avery: Person;
+  };
+};
+
 /** Fictional catering enquiries. The same four faults are used in both runs. */
-export const PEOPLE = {
-  jordan: {
-    leadgenId: "1001001001001",
-    name: "Jordan Hale",
-    email: "jordan.example@example.com",
-    phoneRaw: "+61 400 000 101",
-    want: "Morning tea for 12",
-  },
-  riley: {
-    leadgenId: "1001001001002",
-    name: "Riley Tran",
-    email: "riley.example@example.com",
-    phoneRaw: "0400000202",
-    want: "Lunch for 20",
-  },
-  casey: {
-    leadgenId: "1001001001003",
-    name: "Casey Moore",
-    email: "casey.example@example.com",
-    phoneRaw: "61 400 000 303",
-    want: "Wedding morning tea",
-  },
-  avery: {
-    leadgenId: "1001001001004",
-    name: "Avery Singh",
-    email: "avery.example@example.com",
-    phoneRaw: "(04) 0000 0404",
-    want: "Office lunch for 8",
-  },
-} as const satisfies Record<string, Person>;
+const fixture = JSON.parse(
+  readFileSync(path.join(process.cwd(), "features/ad-leads/fixtures/people.json"), "utf8"),
+) as PeopleFixture;
+
+export const FORM_NAME = fixture.formName;
+export const FORM_ID = fixture.formId;
+export const PAGE_ID = fixture.pageId;
+export const AD_ID = fixture.adId;
+export const FORGED_ID = fixture.forgedId;
+export const PEOPLE = fixture.people;
 
 type StateShape = {
   copyPhase: "idle" | "snapshotted" | "done";
