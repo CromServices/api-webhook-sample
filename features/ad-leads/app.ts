@@ -34,6 +34,8 @@ export type AppOptions = {
   clientTimeoutMs?: number;
   exportDelayMs?: number;
   duplicateWindowMs?: number;
+  /** When the data file is missing or has no run, load the committed fixture. */
+  seedIfEmpty?: boolean;
   graph?: GraphStandIn;
 };
 
@@ -79,7 +81,7 @@ export function createApp(opts: AppOptions): Express {
   const verifyToken = opts.verifyToken ?? randomBytes(24).toString("hex");
   const dataPath =
     opts.dataPath ?? path.join(mkdtempSync(path.join(tmpdir(), "crom-leads-")), "leads.json");
-  const store = openStore(dataPath, opts.duplicateWindowMs);
+  const store = openStore(dataPath, opts.duplicateWindowMs, opts.seedIfEmpty ?? false);
   const graph = opts.graph ?? createGraphStandIn();
   const retryDelayMs = opts.retryDelayMs ?? 40;
   const clientTimeoutMs = opts.clientTimeoutMs ?? 2000;

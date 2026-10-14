@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { readRunFixture, resolveWritableDataFile } from "../../shared/data-file.ts";
 import type { TidiedLead } from "./leadgen.ts";
 
 export type FacebookLead = {
@@ -142,18 +143,51 @@ function clonePicture(state: State): Picture {
   };
 }
 
-export function openStore(dataPath: string, duplicateWindowMs = DEFAULT_WINDOW_MS): Store {
-  mkdirSync(path.dirname(dataPath), { recursive: true });
-  let state: State = existsSync(dataPath)
-    ? (JSON.parse(readFileSync(dataPath, "utf8")) as State)
-    : blank("fixed", duplicateWindowMs);
-  if (!existsSync(dataPath)) persist();
+const STORED_RUN = "features/ad-leads/fixtures/stored-run.json";
+
+function isEmpty(state: State): boolean {
+  return (
+    state.facebookLeads.length === 0 &&
+    state.sheetRows.length === 0 &&
+    state.alerts.length === 0 &&
+    state.attempts.length === 0 &&
+    state.snapshots.before === null &&
+    state.snapshots.after === null
+  );
+}
+
+function readStored(file: string): State | null {
+  if (!existsSync(file)) return null;
+  const raw = readFileSync(file, "utf8").trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as State;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Cannot read data store ${file}: ${message}`);
+  }
+}
+
+export function openStore(
+  dataPath = process.env.DATA_PATH ?? path.join(process.cwd(), "data", "leads.json"),
+  duplicateWindowMs = DEFAULT_WINDOW_MS,
+  seedIfEmpty = false,
+): Store {
+  const file = resolveWritableDataFile(dataPath, "DATA_PATH");
+  let state = readStored(file) ?? blank("fixed", duplicateWindowMs);
   let generation = 1;
 
   function persist(): void {
-    const tmp = `${dataPath}.tmp`;
+    const tmp = `${file}.tmp`;
     writeFileSync(tmp, JSON.stringify(state, null, 2));
-    renameSync(tmp, dataPath);
+    renameSync(tmp, file);
+  }
+
+  if (seedIfEmpty && isEmpty(state)) {
+    state = readRunFixture<State>(STORED_RUN);
+    persist();
+  } else if (!existsSync(file)) {
+    persist();
   }
 
   function addSheet(lead: TidiedLead, at: string): void {

@@ -11,6 +11,8 @@ export type ServerOptions = {
   adminToken?: string;
   /** Port this process listens on, so deliveries post back to this process. */
   port?: number;
+  /** Load the committed before-and-after runs when a data file is empty. */
+  seedIfEmpty?: boolean;
 };
 
 /**
@@ -41,12 +43,14 @@ export function createServerApp(opts: ServerOptions): RunningApp {
     verifyToken: opts.verifyToken,
     dataPath: opts.leadsDataPath,
     adminToken: opts.adminToken,
+    seedIfEmpty: opts.seedIfEmpty,
     leadgenUrl: () => `http://127.0.0.1:${port}/leadgen`,
   });
   const orders: DemoApp = createOrdersApp({
     webhookSecret: opts.webhookSecret,
     dataPath: opts.ordersDataPath,
     adminToken: opts.adminToken,
+    seedIfEmpty: opts.seedIfEmpty,
     webhookUrl: () => `http://127.0.0.1:${port}/webhook`,
   });
 

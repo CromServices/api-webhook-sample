@@ -1,5 +1,11 @@
 # Disposable public demo for Crom Services api-webhook-sample.
 # Sample crumb only — not a forever-host for client workloads.
+#
+# One machine, no volume. fly.toml cannot set the machine count.
+# `fly deploy` keeps the count last set by scale. A deploy that has to create
+# machines from zero passes --ha=false in .github/workflows/fly.yml so it does
+# not add a spare. To put the running app on a single machine, run:
+#   flyctl scale count 1 -a crom-api-webhook-demo
 app = "crom-api-webhook-demo"
 primary_region = "syd"
 

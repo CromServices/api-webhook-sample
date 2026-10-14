@@ -18,6 +18,7 @@ const app = createServerApp({
   ordersDataPath,
   adminToken: process.env.DEMO_ADMIN_TOKEN ?? "",
   port,
+  seedIfEmpty: true,
 });
 
 app.listen(port, host, () => {
