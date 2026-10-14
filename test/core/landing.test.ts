@@ -1,9 +1,9 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
-import { createApp } from "../src/app.ts";
-import { THEME_CSS_URL } from "../src/landing.ts";
-import { STORY } from "../src/story.ts";
+import { createApp } from "../../src/app.ts";
+import { THEME_CSS_URL } from "../../src/landing.ts";
+import { STORY } from "../../src/story.ts";
 
 const PIN = "https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.2/";
 
@@ -123,7 +123,7 @@ describe("GET / landing page", () => {
   });
 
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {
-    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
+    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);  // banned-patterns: allow (asserts the name is absent)
   });
 
   it("leaves /health as {ok:true}", async () => {

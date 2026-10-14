@@ -27,7 +27,8 @@ The public pages are a small shop and a stock count. Placing an order sends it, 
 | `src/story.ts` | Customer-facing labels |
 | `src/landing.ts` | Shared crom-shared v1.0.2 header and footer, pinned |
 | `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
-| `test/` | `node:test` suites |
+| `test/core/`, `test/phone/` | `node:test` suites, one folder per feature (shared webhook core, phone line) |
+| `scripts/phone/` | Phone line tools (test calls, intent eval, transcript loop) |
 | `docs/` | GitHub Pages page (the earlier static copy; the live demo is the Fly app) |
 | `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
 
@@ -126,7 +127,7 @@ MIT, see LICENSE.
 
 - `POST /phone/lookup`: body `{ "orderNumber": "...", "contact": "<AU phone or email>" }`, header `x-phone-line-key`. Returns `{ match: true, status, say }` only when the contact belongs to the order, otherwise the same `{ match: false, say }` whatever was wrong. AU phone formats and email case are normalised. Limited to 30 lookups a minute, and an order number with 5 wrong tries in 15 minutes is held (same "couldn't match" answer).
 - `src/phone/flow.ts`: the call as a pure state machine (greet, order number, contact, status; change requests, "talk to someone" and two failed matches go to the owner; no answer means a message and a text to the owner).
-- `src/phone/session.ts`: runs the flow against phone, text and lookup adapters (mocked in `test/phone.test.ts`).
+- `src/phone/session.ts`: runs the flow against phone, text and lookup adapters (mocked in `test/phone/phone.test.ts`).
 - `GET /calls`: the private call log, behind a sign-in.
 - Orders come from a sample order book in `src/phone/orders.ts` (ACMA fiction-range numbers, example.com emails). It is part of the build, so it is the same after every restart.
 

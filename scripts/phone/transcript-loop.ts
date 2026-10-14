@@ -1,14 +1,14 @@
 /**
  * Transcript loop: read a call's timed transcript (the call-trace lines), find the turns
  * the line misheard, repeated itself on, or got stuck on, and add the caller's real words
- * to test/fixtures/call-turns.json (which test/call-turns.test.ts replays).
- *   npx tsx scripts/transcript-loop.ts <callName> <transcript.txt> [review.md]
+ * to test/phone/fixtures/call-turns.json (which test/call-turns.test.ts replays).
+ *   npx tsx scripts/phone/transcript-loop.ts <callName> <transcript.txt> [review.md]
  * Caller phone numbers are replaced with an ACMA fiction number before anything is written.
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { normaliseAuPhone, spokenDigits } from "../src/phone/normalise.ts";
-import { SAMPLE_ORDERS } from "../src/phone/orders.ts";
+import { normaliseAuPhone, spokenDigits } from "../../src/phone/normalise.ts";
+import { SAMPLE_ORDERS } from "../../src/phone/orders.ts";
 
 export type Turn = { who: "line" | "caller"; t: number; text: string };
 export type CallTurn = {
@@ -80,7 +80,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const [call, file] = process.argv.slice(2);
   if (!call || !file) throw new Error("usage: transcript-loop.ts <callName> <transcript.txt>");
   const here = path.dirname(new URL(import.meta.url).pathname);
-  const fixture = path.join(here, "../test/fixtures/call-turns.json");
+  const fixture = path.join(here, "../../test/phone/fixtures/call-turns.json");
   const existing: CallTurn[] = existsSync(fixture) ? JSON.parse(readFileSync(fixture, "utf8")) : [];
   const fresh = findIssues(call, parseTrace(readFileSync(file, "utf8"))).filter((t) => t.text);
   const kept = existing.filter((t) => t.call !== call);

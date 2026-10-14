@@ -4,13 +4,13 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import type WebSocket from "ws";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES } from "../src/phone/flow.ts";
-import { lookupOrder } from "../src/phone/lookup.ts";
-import { sampleOrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
-import { bridgeCall, streamToken } from "../src/phone/twilio.ts";
-import type { VoiceEvents } from "../src/phone/voice/provider.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES } from "../../src/phone/flow.ts";
+import { lookupOrder } from "../../src/phone/lookup.ts";
+import { sampleOrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
+import { bridgeCall, streamToken } from "../../src/phone/twilio.ts";
+import type { VoiceEvents } from "../../src/phone/voice/provider.ts";
 
 const TOKEN = "test-twilio-token-not-real";
 const SID = "CA00000000000000000000000000call4";
@@ -58,7 +58,7 @@ describe("call 4 fix 2: outbound greets when the person first speaks, else after
     ws.close();
   });
   it("default wait is now 0 (call 7: greet as soon as the outbound call connects)", () => {
-    assert.match(readFileSync(new URL("../src/phone/twilio.ts", import.meta.url), "utf8"), /helloWaitMs \?\? 0/);
+    assert.match(readFileSync(new URL("../../src/phone/twilio.ts", import.meta.url), "utf8"), /helloWaitMs \?\? 0/);
   });
 });
 
@@ -74,7 +74,7 @@ describe("call 4 fix 4 (revised after call 5): wait for real quiet, never a shor
   });
   it("tuned on the real call fixtures: every full answer counts as complete, partial numbers don't", async () => {
     const turns: Array<{ text: string; expect?: string }> = JSON.parse(readFileSync(new URL("./fixtures/call-turns.json", import.meta.url), "utf8"));
-    const { readOrderNumber, normaliseContact } = await import("../src/phone/normalise.ts");
+    const { readOrderNumber, normaliseContact } = await import("../../src/phone/normalise.ts");
     for (const t of turns.filter((x) => x.expect === "number")) assert.ok(readOrderNumber(t.text), t.text);
     for (const t of turns.filter((x) => x.expect === "contact")) assert.ok(normaliseContact(t.text), t.text);
     for (const part of ["0 4 9 1", "It's uh, 0 4", "Zero"]) assert.equal(normaliseContact(part), null, part);
@@ -97,8 +97,8 @@ describe("no-match wording: says it's the details, not hearing", () => {
 describe("call 4 fix 5: voicemail text from the line's own speech-to-text", () => {
   it("recording callback -> transcribe -> message + order request in the log; no Twilio transcription", async () => {
     const express = (await import("express")).default;
-    const { mountTwilio, twilioSignature } = await import("../src/phone/twilio.ts");
-    const { ASKED } = await import("../src/phone/flow.ts");
+    const { mountTwilio, twilioSignature } = await import("../../src/phone/twilio.ts");
+    const { ASKED } = await import("../../src/phone/flow.ts");
     const app = express(); app.use(express.urlencoded({ extended: false }));
     const log = openCallLog();
     log.add({ ref: SID, caller: "0491570110", asked: ["Where's my order"], told: [], handedOver: true, ownerAnswered: false, message: null, textedOwner: false, startedAt: "2026-10-13T02:30:00Z", endedAt: "2026-10-13T02:31:00Z" });
@@ -121,7 +121,7 @@ describe("call 4 fix 5: voicemail text from the line's own speech-to-text", () =
     assert.equal(e.message, "Please get Sam to order me something else.");
     assert.ok(e.asked.includes(ASKED.orderRequest));
     // Voicemail TwiML no longer asks Twilio to transcribe.
-    assert.doesNotMatch(readFileSync(new URL("../src/phone/twilio.ts", import.meta.url), "utf8"), /transcribe="true"/);
+    assert.doesNotMatch(readFileSync(new URL("../../src/phone/twilio.ts", import.meta.url), "utf8"), /transcribe="true"/);
     server.closeAllConnections(); await new Promise<void>((res) => server.close(() => res()));
   });
 });

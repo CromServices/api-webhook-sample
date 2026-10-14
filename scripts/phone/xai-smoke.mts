@@ -6,7 +6,7 @@
  * 3. expect input transcription back (our ASR path) and no model audio passed through
  * Prints timings and an estimated cost (US$0.08/min, xAI pricing). Never prints the key.
  */
-import { XaiVoiceProvider } from "../src/phone/voice/xai.ts";
+import { XaiVoiceProvider } from "../../src/phone/voice/xai.ts";
 
 const key = process.env.XAI_API_KEY ?? "";
 if (!key) {

@@ -1,11 +1,11 @@
 /** Name + last-3 lookup never reveals another order's status. */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { openCallLog } from "../src/phone/calllog.ts";
-import { LINES } from "../src/phone/flow.ts";
-import { lookupByName, lookupOrder } from "../src/phone/lookup.ts";
-import { STATUS_WORDS, sampleOrderSource, type OrderSource } from "../src/phone/orders.ts";
-import { CallSession } from "../src/phone/session.ts";
+import { openCallLog } from "../../src/phone/calllog.ts";
+import { LINES } from "../../src/phone/flow.ts";
+import { lookupByName, lookupOrder } from "../../src/phone/lookup.ts";
+import { STATUS_WORDS, sampleOrderSource, type OrderSource } from "../../src/phone/orders.ts";
+import { CallSession } from "../../src/phone/session.ts";
 
 const orders = sampleOrderSource();
 // Two fiction orders sharing a name and last 3 digits.

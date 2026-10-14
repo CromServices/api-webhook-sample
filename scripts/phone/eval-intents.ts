@@ -1,12 +1,12 @@
 /**
  * Intent accuracy over phrase sets. Repo fixtures (own phrases, masked call turns) always;
  * the public-dataset corpus only if PHRASEBANK_DIR points at it (kept out of this repo).
- *   PHRASEBANK_DIR=../phrasebank npx tsx scripts/eval-intents.ts [--bank] [--misses]
+ *   PHRASEBANK_DIR=../phrasebank npx tsx scripts/phone/eval-intents.ts [--bank] [--misses]
  */
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { detectIntent } from "../src/phone/flow.ts";
-import { normaliseContact, readOrderNumber } from "../src/phone/normalise.ts";
+import { detectIntent } from "../../src/phone/flow.ts";
+import { normaliseContact, readOrderNumber } from "../../src/phone/normalise.ts";
 
 export type Row = { text: string; expect: string; src?: string; label?: string };
 
@@ -41,8 +41,8 @@ export function score(rows: Row[]) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const sets: Array<[string, Row[]]> = [];
   const here = path.dirname(new URL(import.meta.url).pathname);
-  sets.push(["own AU phrases", JSON.parse(readFileSync(path.join(here, "../test/fixtures/phrases-au.json"), "utf8"))]);
-  const calls = path.join(here, "../test/fixtures/call-turns.json");
+  sets.push(["own AU phrases", JSON.parse(readFileSync(path.join(here, "../../test/phone/fixtures/phrases-au.json"), "utf8"))]);
+  const calls = path.join(here, "../../test/phone/fixtures/call-turns.json");
   if (existsSync(calls)) sets.push(["real call turns", JSON.parse(readFileSync(calls, "utf8")).filter((r: Row) => r.expect)]);
   const dir = process.env.PHRASEBANK_DIR;
   if (dir) {

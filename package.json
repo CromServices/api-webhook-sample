@@ -18,7 +18,8 @@
     "start": "node dist/server.js",
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*/*.test.ts",
+    "check:banned": "node scripts/ci/banned-patterns.mjs"
   },
   "dependencies": {
     "express": "^5.2.1",
