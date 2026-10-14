@@ -18,3 +18,13 @@ jobs:
       - run: npm test
       - name: Banned copy and page assets
         run: bash scripts/check-banned.sh
+
+  container:
+    name: Production container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the production image
+        run: docker build -t crom-api-webhook-sample:ci .
+      - name: Boot non-root and require live run data
+        run: bash scripts/check-container.sh crom-api-webhook-sample:ci

@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { readRunFixture, resolveWritableDataFile } from "../../shared/data-file.ts";
 import { STORY } from "./story.ts";
 
 export type ShopOrder = {
@@ -115,19 +116,50 @@ function picture(state: State): Picture {
   };
 }
 
-export function openStore(dataPath: string): Store {
-  mkdirSync(path.dirname(dataPath), { recursive: true });
-  let state: State = existsSync(dataPath)
-    ? (JSON.parse(readFileSync(dataPath, "utf8")) as State)
-    : seed("fixed");
-  if (!existsSync(dataPath)) persist();
+const STORED_RUN = "features/order-sync/fixtures/stored-run.json";
+
+function isEmpty(state: State): boolean {
+  return (
+    state.shopOrders.length === 0 &&
+    state.stockOrders.length === 0 &&
+    state.attempts.length === 0 &&
+    state.snapshots.before === null &&
+    state.snapshots.after === null
+  );
+}
+
+function readStored(file: string): State | null {
+  if (!existsSync(file)) return null;
+  const raw = readFileSync(file, "utf8").trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as State;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Cannot read data store ${file}: ${message}`);
+  }
+}
+
+export function openStore(
+  dataPath = process.env.ORDER_DATA_PATH ?? path.join(process.cwd(), "data", "demo-shop.json"),
+  seedIfEmpty = false,
+): Store {
+  const file = resolveWritableDataFile(dataPath, "ORDER_DATA_PATH");
+  let state = readStored(file) ?? seed("fixed");
   let generation = 1;
   const slowUsed = new Set<string>();
 
   function persist(): void {
-    const tmp = `${dataPath}.tmp`;
+    const tmp = `${file}.tmp`;
     writeFileSync(tmp, JSON.stringify(state, null, 2));
-    renameSync(tmp, dataPath);
+    renameSync(tmp, file);
+  }
+
+  if (seedIfEmpty && isEmpty(state)) {
+    state = readRunFixture<State>(STORED_RUN);
+    persist();
+  } else if (!existsSync(file)) {
+    persist();
   }
 
   function product(name: string): Product | undefined {

@@ -20,6 +20,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY features/ad-leads/fixtures ./features/ad-leads/fixtures
 COPY features/order-sync/fixtures ./features/order-sync/fixtures
+RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 EXPOSE 3000
 CMD ["node", "dist/src/server.js"]

@@ -110,6 +110,7 @@ function emailHits(text) {
   for (let i = 0; i < lines.length; i += 1) {
     for (const match of lines[i].matchAll(EMAIL)) {
       if (RETINA_FILE.test(match[0])) continue;
+      if (match[0].toLowerCase().endsWith("@example.com")) continue;
       hits.push(i + 1);
       break;
     }

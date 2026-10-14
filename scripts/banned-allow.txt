@@ -9,5 +9,7 @@
 # JSON fixtures, README files, and every other .ts file are allow-listed.
 #
 # The check also boots the app and scans the HTML each customer route returns.
+# Addresses at @example.com are the fictional people in the stored-run fixtures.
+# Any other email still fails the check.
 # Every img src, img/source srcset, and stylesheet on those pages is fetched.
 # A response that is not HTTP 200 fails the check. There is no footer exception.

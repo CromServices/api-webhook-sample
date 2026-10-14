@@ -26,6 +26,8 @@ export type AppOptions = {
   adminToken?: string;
   /** Where the shop posts an order. Defaults to this process on port 3000. */
   webhookUrl?: () => string;
+  /** When the data file is missing or has no run, load the committed fixture. */
+  seedIfEmpty?: boolean;
   retryDelaysMs?: number[];
   clientTimeoutMs?: number;
 };
@@ -73,7 +75,7 @@ function sleep(ms: number): Promise<void> {
 export function createApp(opts: AppOptions): DemoApp {
   const dataPath =
     opts.dataPath ?? path.join(mkdtempSync(path.join(tmpdir(), "crom-shop-")), "demo-shop.json");
-  const store = openStore(dataPath);
+  const store = openStore(dataPath, opts.seedIfEmpty ?? false);
   const inflight = new Set<string>();
   const recovered = new Set<string>();
   const deps: DeliveryDeps = {
