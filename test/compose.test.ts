@@ -48,7 +48,7 @@ describe("shared server routes", () => {
   });
 
   it("serves the shop pages and the shop home without taking over /", async () => {
-    for (const route of ["/shop", "/stock", "/history", "/demo", "/demo?view=triage"]) {
+    for (const route of ["/shop", "/stock", "/history", "/shop-before-after", "/shop-before-after?view=triage"]) {
       const page = await html(route);
       assert.match(page, /<title>Shop-to-stock order sync: sample<\/title>/, route);
     }
@@ -76,6 +76,13 @@ describe("shared server routes", () => {
 
     const handshake = await fetch(`${base}/leadgen`);
     assert.equal(handshake.status, 403);
+
+    const side = await fetch(`${base}/demo`, { redirect: "manual" });
+    assert.equal(side.status, 301);
+    assert.equal(side.headers.get("location"), "/shop-before-after");
+    const triage = await fetch(`${base}/demo?view=triage`, { redirect: "manual" });
+    assert.equal(triage.status, 301);
+    assert.equal(triage.headers.get("location"), "/shop-before-after?view=triage");
   });
 
   after(async () => {

@@ -13,8 +13,9 @@ On this sample's own `createApp()`, the home page is `GET /`. The shared server 
 | `GET /shop` | Online shop. Post an order here |
 | `GET /stock` | Stock count |
 | `GET /history` | What happened |
-| `GET /demo` | Saved before-run and after-run |
-| `GET /demo?view=triage` | What was checked on the before-run |
+| `GET /shop-before-after` | Saved before-run and after-run |
+| `GET /shop-before-after?view=triage` | What was checked on the before-run |
+| `GET /demo` | 301 to `/shop-before-after`, keeping the query |
 | `POST /shop/orders` | Place an order |
 | `POST /webhook` | Signed check. An order-shaped body is stocked |
 

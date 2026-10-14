@@ -1,5 +1,28 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import net from "node:net";
+import { tmpdir } from "node:os";
 import path from "node:path";
+
+/** Customer routes the running app must serve. Bodies are scanned as sent. */
+const RENDERED_ROUTES = [
+  { path: "/", status: 200 },
+  { path: "/health", status: 200 },
+  { path: "/sheet", status: 200 },
+  { path: "/alerts", status: 200 },
+  { path: "/happened", status: 200 },
+  { path: "/before-after", status: 200 },
+  { path: "/before-after?view=triage", status: 200 },
+  { path: "/leadgen", status: 403 },
+  { path: "/shop", status: 200 },
+  { path: "/stock", status: 200 },
+  { path: "/history", status: 200 },
+  { path: "/shop-before-after", status: 200 },
+  { path: "/shop-before-after?view=triage", status: 200 },
+  { path: "/shop-and-stock", status: 200 },
+  { path: "/demo", status: 301 },
+  { path: "/demo?view=triage", status: 301 },
+];
 
 const root = process.cwd();
 
@@ -141,6 +164,127 @@ function scanFile(rel, raw, patterns) {
   });
 }
 
+function scanRenderedHtml(raw, patterns) {
+  const labels = new Set();
+  for (const pattern of patterns) {
+    if (pattern.kind === "word" || pattern.kind === "word-i") {
+      const flags = pattern.kind === "word-i" ? "i" : "";
+      if (lineHits(raw, wordPattern(pattern.value, flags)).length > 0) labels.add(pattern.label);
+    } else if (pattern.kind === "email") {
+      if (emailHits(raw).length > 0) labels.add(pattern.label);
+    } else if (pattern.kind === "literal") {
+      const escaped = pattern.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (lineHits(raw, new RegExp(escaped, "g")).length > 0) labels.add(pattern.label);
+    } else if (pattern.kind === "github") {
+      const escaped = pattern.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (lineHits(raw, new RegExp(escaped, "gi")).length > 0) labels.add(pattern.label);
+    } else {
+      throw new Error(`Unknown pattern kind in ${pattern.label}`);
+    }
+  }
+  return [...labels];
+}
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, "127.0.0.1", () => {
+      const addr = server.address();
+      const port = typeof addr === "object" && addr ? addr.port : 0;
+      server.close((err) => (err ? reject(err) : resolve(port)));
+    });
+  });
+}
+
+function waitForHealth(base, child) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (err) reject(err);
+      else resolve();
+    };
+    const timer = setTimeout(() => finish(new Error("timed out waiting for /health")), 10000);
+    child.once("exit", (code) => finish(new Error(`server exited (${code}) before /health`)));
+    const poll = async () => {
+      const start = Date.now();
+      while (!settled && Date.now() - start < 10000) {
+        try {
+          const res = await fetch(`${base}/health`);
+          if (res.ok) {
+            finish();
+            return;
+          }
+        } catch {
+          // the process is still starting
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      finish(new Error("timed out waiting for /health"));
+    };
+    poll().catch((err) => finish(err));
+  });
+}
+
+async function scanRunningApp(patterns) {
+  const port = await freePort();
+  const dir = mkdtempSync(path.join(tmpdir(), "crom-banned-"));
+  const child = spawn(process.execPath, ["--import", "tsx", "src/server.ts"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOST: "127.0.0.1",
+      DATA_PATH: path.join(dir, "leads.json"),
+      ORDER_DATA_PATH: path.join(dir, "shop.json"),
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let log = "";
+  child.stdout.on("data", (chunk) => {
+    log += chunk;
+  });
+  child.stderr.on("data", (chunk) => {
+    log += chunk;
+  });
+  const base = `http://127.0.0.1:${port}`;
+  let hits = 0;
+  try {
+    await waitForHealth(base, child);
+    for (const route of RENDERED_ROUTES) {
+      const res = await fetch(`${base}${route.path}`, { redirect: "manual" });
+      const body = await res.text();
+      if (res.status !== route.status) {
+        hits += 1;
+        console.error(`rendered GET ${route.path}: expected ${route.status}, got ${res.status}`);
+      }
+      for (const label of scanRenderedHtml(body, patterns)) {
+        hits += 1;
+        console.error(`rendered GET ${route.path}: banned ${label}`);
+      }
+    }
+  } catch (err) {
+    hits += 1;
+    console.error(`rendered check could not boot the app: ${err instanceof Error ? err.message : err}`);
+    if (log.trim()) console.error(log.trim());
+  } finally {
+    child.kill("SIGTERM");
+    await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        resolve();
+      }, 1000);
+      child.once("exit", () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
+  }
+  return hits;
+}
+
 const patterns = loadPatterns(path.join(root, "scripts/banned-patterns.txt"));
 const allow = loadAllow(path.join(root, "scripts/banned-allow.txt"));
 const files = walk(root, []).map((full) => path.relative(root, full)).filter(isPublic).sort();
@@ -160,9 +304,11 @@ for (const rel of files) {
   }
 }
 
+failed += await scanRunningApp(patterns);
+
 if (failed > 0) {
-  console.error(`banned check failed: ${failed} hit${failed === 1 ? "" : "s"} in customer-facing files`);
+  console.error(`banned check failed: ${failed} hit${failed === 1 ? "" : "s"}`);
   process.exit(1);
 }
 
-console.log(`banned check passed (${files.length} customer-facing files)`);
+console.log(`banned check passed (${files.length} files, ${RENDERED_ROUTES.length} rendered routes)`);

@@ -458,7 +458,7 @@ describe("saved before and after", () => {
       11,
     );
 
-    const demo = await (await fetch(`${base}/demo`)).text();
+    const demo = await (await fetch(`${base}/shop-before-after`)).text();
     assert.match(demo, /Made 3\. Arrived 2\./);
     assert.match(demo, /Made 3\. Arrived 3\./);
     assert.match(demo, /Arrived twice/);
@@ -476,7 +476,7 @@ describe("saved before and after", () => {
     assert.doesNotMatch(demo, /\d{4}-\d{2}-\d{2}T/);
     assert.match(demo, new RegExp(madeArrived(3, 3)));
 
-    const triage = await (await fetch(`${base}/demo?view=triage`)).text();
+    const triage = await (await fetch(`${base}/shop-before-after?view=triage`)).text();
     const beforeShot = state.snapshots.before;
     assert.ok(beforeShot);
     const never = beforeShot.shopOrders.filter(

@@ -53,8 +53,8 @@ export const STORY = {
     { href: "/shop", label: "Online shop" },
     { href: "/stock", label: "Stock" },
     { href: "/history", label: "What happened" },
-    { href: "/demo", label: "Before and after" },
-    { href: "/demo?view=triage", label: "What we checked" },
+    { href: "/shop-before-after", label: "Before and after" },
+    { href: "/shop-before-after?view=triage", label: "What we checked" },
   ],
 } as const;
 

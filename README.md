@@ -12,7 +12,7 @@ The Facebook app secret and the verify token are generated in memory when `META_
 
 Public pages stay in plain language (names, phones, what they asked for). The browser title is the only place that says sample. Labels live in `features/ad-leads/story.ts`. Counts on the pages are read from the stored runs.
 
-Shop-to-stock orders live in `features/order-sync/`. Catering lead ads live in `features/ad-leads/`. The header, footer and signature check live in `shared/`. `src/server.ts` starts both. Existing lead routes stay where they were. The shop home is also at `GET /shop-and-stock`, so `GET /` stays the leads page. Shop pages are `GET /shop`, `GET /stock`, `GET /history` and `GET /demo`.
+Shop-to-stock orders live in `features/order-sync/`. Catering lead ads live in `features/ad-leads/`. The header, footer and signature check live in `shared/`. `src/server.ts` starts both. Existing lead routes stay where they were. The shop home is also at `GET /shop-and-stock`, so `GET /` stays the leads page. Shop pages are `GET /shop`, `GET /stock`, `GET /history` and `GET /shop-before-after`. `GET /demo` redirects there.
 
 - `GET /` shows the leads Facebook has and the rows in the sheet, from the stored file.
 - `GET /sheet` is the sheet: date, name, phone, email, what they want, source form, and New or Contacted.

@@ -44,6 +44,7 @@ describe("GET / landing page", () => {
     assert.match(html, /<footer class="crom-footer">/);
     assert.match(html, /<a href="https:\/\/cromservices\.com\.au"[^>]*aria-label="Built by Crom Services"/);
     assert.match(html, /Crom Services · Australia/);
+    assert.doesNotMatch(html, /cromservices@gmail\.com/);
     assert.match(html, /Sam's Café · shop and stock/);
     assert.doesNotMatch(visibleText(html), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
   });
@@ -93,7 +94,7 @@ describe("GET / landing page", () => {
   });
 
   it("serves the shop, stock, history and side-by-side pages in plain language", async () => {
-    for (const path of ["/shop", "/stock", "/history", "/demo", "/demo?view=triage"]) {
+    for (const path of ["/shop", "/stock", "/history", "/shop-before-after", "/shop-before-after?view=triage"]) {
       const res = await fetch(`${baseUrl}${path}`);
       assert.equal(res.status, 200, path);
       const page = await res.text();
@@ -107,7 +108,7 @@ describe("GET / landing page", () => {
       assert.match(page, /Sam's Café · shop and stock/, path);
       assert.doesNotMatch(visibleText(page), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i, path);
     }
-    const demo = await (await fetch(`${baseUrl}/demo`)).text();
+    const demo = await (await fetch(`${baseUrl}/shop-before-after`)).text();
     assert.equal((demo.match(/>Before and after</g) ?? []).length, 2);
     assert.equal((demo.match(/>What we checked</g) ?? []).length, 1);
     assert.match(demo, />Before</);
@@ -115,11 +116,20 @@ describe("GET / landing page", () => {
     assert.match(demo, /No orders yet\./);
     const history = await (await fetch(`${baseUrl}/history`)).text();
     assert.match(history, /Nothing has happened yet\./);
-    const triage = await (await fetch(`${baseUrl}/demo?view=triage`)).text();
+    const triage = await (await fetch(`${baseUrl}/shop-before-after?view=triage`)).text();
     assert.match(triage, /Orders made: 0\. Orders that arrived in stock: 0\./);
     assert.match(triage, /Nothing out of place\./);
     assert.equal((triage.match(/>Before and after</g) ?? []).length, 1);
     assert.doesNotMatch(triage, /1 never arrived|1 arrived twice|not from your shop|weren't copied across/);
+  });
+
+  it("redirects the old side-by-side path", async () => {
+    const side = await fetch(`${baseUrl}/demo`, { redirect: "manual" });
+    assert.equal(side.status, 301);
+    assert.equal(side.headers.get("location"), "/shop-before-after");
+    const triage = await fetch(`${baseUrl}/demo?view=triage`, { redirect: "manual" });
+    assert.equal(triage.status, 301);
+    assert.equal(triage.headers.get("location"), "/shop-before-after?view=triage");
   });
 
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {

@@ -23,6 +23,7 @@ const ORDER_PATHS = new Set([
   "/stock",
   "/history",
   "/demo",
+  "/shop-before-after",
   "/shop/orders",
   "/admin/stock",
   "/admin/slow",

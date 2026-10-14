@@ -581,7 +581,7 @@ describe("the same leads, both ways", () => {
       assert.match(html, /<title>Ad leads into your sheet: sample<\/title>/, route);
       assert.match(html, /Sam's Café · catering leads/, route);
       assert.match(html, /Crom Services · Australia/, route);
-      assert.match(html, /cromservices@gmail.com/, route);
+      assert.doesNotMatch(html, /cromservices@gmail\.com/, route);
       assert.doesNotMatch(html, /crom-tag/, route);
       assert.doesNotMatch(html, /<style/, route);
       assert.equal(html.includes(APP_SECRET), false, route);
