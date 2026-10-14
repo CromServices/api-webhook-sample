@@ -54,7 +54,7 @@ Does not prove: a live Meta app, a real CRM, or a sent email or text.
 
 ## Live link
 
-- Demo: https://crom-api-webhook-demo.fly.dev
+- Live app: https://crom-api-webhook-demo.fly.dev
 - Health: https://crom-api-webhook-demo.fly.dev/health
 - Owner page (plain language): https://cromservices.github.io/api-webhook-sample/
 
