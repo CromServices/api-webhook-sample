@@ -110,7 +110,6 @@ function emailHits(text) {
   for (let i = 0; i < lines.length; i += 1) {
     for (const match of lines[i].matchAll(EMAIL)) {
       if (RETINA_FILE.test(match[0])) continue;
-      if (match[0].toLowerCase().endsWith("@example.com")) continue;
       hits.push(i + 1);
       break;
     }
@@ -165,14 +164,19 @@ function scanFile(rel, raw, patterns) {
   });
 }
 
+function visibleRendered(html) {
+  return stripTags(html);
+}
+
 function scanRenderedHtml(raw, patterns) {
   const labels = new Set();
+  const visible = visibleRendered(raw);
   for (const pattern of patterns) {
     if (pattern.kind === "word" || pattern.kind === "word-i") {
       const flags = pattern.kind === "word-i" ? "i" : "";
       if (lineHits(raw, wordPattern(pattern.value, flags)).length > 0) labels.add(pattern.label);
     } else if (pattern.kind === "email") {
-      if (emailHits(raw).length > 0) labels.add(pattern.label);
+      if (emailHits(visible).length > 0) labels.add(pattern.label);
     } else if (pattern.kind === "literal") {
       const escaped = pattern.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       if (lineHits(raw, new RegExp(escaped, "g")).length > 0) labels.add(pattern.label);
@@ -183,6 +187,7 @@ function scanRenderedHtml(raw, patterns) {
       throw new Error(`Unknown pattern kind in ${pattern.label}`);
     }
   }
+  if (visible.toLowerCase().includes("example")) labels.add("example");
   return [...labels];
 }
 
