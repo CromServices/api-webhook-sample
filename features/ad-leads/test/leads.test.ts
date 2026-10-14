@@ -143,7 +143,7 @@ describe("lead notice and tidy", () => {
     assert.ok(lead);
     assert.equal(lead?.phone, "0400 000 101");
     assert.equal(lead?.phoneRaw, "+61 400 000 101");
-    assert.equal(lead?.email, "jordan.example@example.com");
+    assert.equal(lead?.email, "jordan.hale@example.com");
     assert.equal(lead?.want, "Morning tea for 12");
     assert.equal(tidyLead({ ...personBody(PEOPLE.jordan).lead, field_data: [] }, FORM_NAME), null);
   });
@@ -590,6 +590,8 @@ describe("the same leads, both ways", () => {
       }
       assert.doesNotMatch(visible(html), forbidden, route);
       assert.doesNotMatch(visible(html), /\bsample\b/i, route);
+      assert.doesNotMatch(visible(html), /example/i, route);
+      assert.doesNotMatch(visible(html), /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/, route);
     }
     const compare = pages[4][1];
     const beforeHeadline = leadHeadline(before);
@@ -632,6 +634,11 @@ describe("the same leads, both ways", () => {
     assert.match(sheet, /0400 000 101/);
     assert.match(sheet, /0400 000 202/);
     assert.match(sheet, /0400 000 303/);
+    assert.match(sheet, /j•••@••••/);
+    assert.match(sheet, /r•••@••••/);
+    assert.match(sheet, /c•••@••••/);
+    assert.doesNotMatch(sheet, /@example\.com/);
+    assert.doesNotMatch(visible(sheet), /example/i);
     assert.doesNotMatch(sheet, /Office lunch for 8/);
     assert.match(sheet, />New</);
 

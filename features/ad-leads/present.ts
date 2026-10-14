@@ -113,6 +113,13 @@ export function leadHeadline(picture: Picture): string {
 
 export const EMPTY_HEADLINE = "New leads: 0. In your sheet: 0";
 
+/** Customer pages show a mask. The stored address stays in the data file. */
+export function maskEmail(email: string): string {
+  const first = email.trim().charAt(0).toLowerCase();
+  if (!first) return "email on file";
+  return `${first}•••@••••`;
+}
+
 export function present(picture: Picture): ColumnView {
   const notes = picture.attempts
     .filter((row) => row.outcome === "rejected")
@@ -132,7 +139,7 @@ export function present(picture: Picture): ColumnView {
       date: humanDate(row.createdTime),
       name: row.name,
       phone: row.phone,
-      email: row.email,
+      email: maskEmail(row.email),
       want: row.want,
       formName: row.formName,
       status: row.status,
