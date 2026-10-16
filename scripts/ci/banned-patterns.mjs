@@ -3,6 +3,7 @@
 // Prints file:line and the rule only (never the matched text), so a leaked secret is not echoed into CI logs.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { createHmac } from "node:crypto";
 
 const files = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" }).split("\0").filter(Boolean);
 const skip = (f) => /(^|\/)package-lock\.json$|\.(png|jpe?g|gif|webp|ico|pdf|woff2?|mp3|wav)$/i.test(f) || f === "scripts/ci/banned-patterns.mjs";
@@ -21,8 +22,29 @@ const SECRETS = [
   ["private-key", /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
 ];
 
-// 2. Real phone numbers. Nate's mobile in any spacing, then any unmasked AU mobile outside the fictional/test ranges.
-const OWNER_MOBILE = /(?!)/; // owner mobile removed from history (16 Oct); see the hashed check on later commits
+// 2. Real phone numbers. The owner's mobile in any spacing (hashed, see below), then any unmasked AU mobile outside the fictional/test ranges.
+// The owner's mobile is never stored here. BANNED_OWNER_SALT + BANNED_OWNER_HASH (env / CI secrets only) hold
+// HMAC-SHA256(salt, "04xxxxxxxx"); every phone-like digit run is normalised to that form, hashed and compared.
+// Without both env values the rule is skipped with a notice (the hash alone can't be brute-forced without the salt).
+const OWNER_SALT = process.env.BANNED_OWNER_SALT ?? "";
+const OWNER_HASH = process.env.BANNED_OWNER_HASH ?? "";
+if (!OWNER_SALT || !OWNER_HASH) console.error("banned-patterns: owner-mobile rule skipped (BANNED_OWNER_SALT / BANNED_OWNER_HASH not set)");
+const PHONEISH = /(?:\+|\b)\d[\d\s\-.()]{7,18}\d/g;
+const normMobile = (run) => {
+  let d = run.replace(/\D/g, "");
+  if (d.startsWith("0061")) d = d.slice(4);
+  else if (d.startsWith("61")) d = d.slice(2);
+  if (!d.startsWith("0")) d = "0" + d; // +61 4.., +61 (0) 4.., 04..
+  return /^0\d{9}$/.test(d) ? d : null;
+};
+const ownerMobileIn = (ln) => {
+  if (!OWNER_SALT || !OWNER_HASH) return false;
+  for (const m of ln.matchAll(PHONEISH)) {
+    const d = normMobile(m[0]);
+    if (d && createHmac("sha256", OWNER_SALT).update(d).digest("hex") === OWNER_HASH) return true;
+  }
+  return false;
+};
 const AU_MOBILE = /(?<![\d*•x])(?:\+?61[\s\-]?|0)4\d{2}[\s\-]?\d{3}[\s\-]?\d{3}(?!\d)/g;
 // Test fixtures: ACMA fictional range 0491 57x xxx, all-zero 0400 000 xxx, 0412 345 678 style sequences.
 const allowedMobile = (m) => {
@@ -43,7 +65,7 @@ const OWNER_LOCAL = /^(naths?|nathan|nate|sharp)[._-]?/i;
 const OWNER_NAME = /\b(Nathan|Nate|naths)\b|\bNathan Sharp\b/;
 
 // 5. Vendor/tool/bot wording, public copy only: docs/, public/, and the string literals in files that build pages or spoken/sent copy.
-const COPY_FILES = /^(docs|public)\/.*\.(html?|md|txt|json)$|^src\/(pages|present|story|landing)\.ts$|^src\/(phone|whatsapp)\/(page|flow)\.ts$/;
+const COPY_FILES = /^(docs|public)\/.*\.(html?|md|txt|json)$|^src\/(pages|present|story|landing)\.ts$|^src\/(phone|whatsapp)\/(page|flow)\.ts$|^src\/answer\/(words|mail)\.ts$/;
 const VENDOR = /\b(AI|A\.I\.|[Bb]ots?|[Cc]hat ?[Bb]ot|Grok|xAI|Twilio|Meta|OpenAI|ChatGPT|Claude|Anthropic|Cursor|Lovable|Fly\.io|fly\.dev|Supabase|LLM|GPT)\b/;
 const literals = (src) => {
   // Keep only text inside quotes/backticks, drop ${...} expressions and HTML tags/attributes.
@@ -76,7 +98,7 @@ for (const f of files) {
     const n = i + 1;
     if (/banned-patterns: allow/.test(ln)) return;
     for (const [rule, re] of SECRETS) if (re.test(ln) && !DEMO_VALUE.test(ln)) hit(f, n, `secret:${rule}`);
-    if (OWNER_MOBILE.test(ln)) hit(f, n, "phone:owner-mobile");
+    if (ownerMobileIn(ln)) hit(f, n, "phone:owner-mobile");
     for (const m of ln.matchAll(AU_MOBILE)) if (!allowedMobile(m[0])) hit(f, n, "phone:unmasked-au-mobile");
     for (const m of ln.matchAll(EMAIL)) if (!allowedEmail(m[0]) && !(f.startsWith("test/") && !OWNER_LOCAL.test(m[0]))) hit(f, n, "personal-email");
     if (OWNER_NAME.test(ln)) hit(f, n, "public-face:owner-name");

@@ -1,8 +1,8 @@
 /** Every line the caller hears. Public face: Crom Services. No bot or AI wording unless the caller asks. */
 
-/** L-064 (16 Oct 13:32), used only when the caller asks. */
+/** Phone version of L-064, approved by Director 16 Oct 16:11 (relayed yes); used only when the caller asks. */
 export const ASKED_ABOUT_AI =
-  "I built this assistant so your questions, scope changes and requirements get picked up 24/7, even when I'm offline. I review everything myself before anything changes on your job.";
+  "This line takes your details 24/7 so nothing gets missed, even after hours. Nate reviews every message himself and replies in writing."; // banned-patterns: allow (approved owner name in the phone answer)
 
 /** Caller asking whether this is a bot, AI, recording or a real person. */
 export const AI_QUESTION =
