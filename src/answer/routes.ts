@@ -38,6 +38,8 @@ const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const YES = /\b(yes|yeah|yep|yup|correct|right|that's it|that is|sure|affirmative|spot on)\b/i;
 const NO = /\b(no|nope|nah|wrong|incorrect|not right|isn't)\b/i;
 
+const titleCase = (s: string) => s.replace(/\b([a-z])/g, (m) => m.toUpperCase());
+
 export function mountAnswerLine(app: Express, opts: AnswerOptions) {
   const base = opts.publicBaseUrl.replace(/\/$/, "");
   const token = opts.authToken;
@@ -160,7 +162,7 @@ export function mountAnswerLine(app: Express, opts: AnswerOptions) {
     const s = heard(req);
     if (askedAboutAi(s)) return twiml(res, say(ASKED_ABOUT_AI) + askName(c));
     if (!s && tried(c, "name") < 2) return twiml(res, say(W.menuAgain) + askName(c));
-    c.name = s.replace(/^(my name is|my name's|it's|this is|i'm|i am)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 80);
+    c.name = titleCase(s.replace(/^(my name is|my name's|it's|this is|i'm|i am)\s+/i, "").replace(/[.!?]+$/, "").slice(0, 80));
     persist();
     twiml(res, askContact(c));
   });
@@ -173,7 +175,9 @@ export function mountAnswerLine(app: Express, opts: AnswerOptions) {
     if (askedAboutAi(s)) return twiml(res, say(ASKED_ABOUT_AI) + askContact(c));
     if (!s && !d && tried(c, "contact") < 2) return twiml(res, say(W.menuAgain) + askContact(c));
     c.contactHeard = (s || d).slice(0, 160);
-    const parsed = c.contactHeard ? normaliseContact(c.contactHeard) : null;
+    // Test call 1: speech-to-text heard "dot" as "dart".
+    const cleaned = c.contactHeard.replace(/\b(dart|dots)\b/gi, "dot");
+    const parsed = cleaned ? normaliseContact(cleaned) : null;
     c.contact = parsed ? { kind: parsed.kind, value: parsed.value } : null;
     persist();
     const back = c.contact

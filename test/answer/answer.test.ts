@@ -141,6 +141,20 @@ test("scripted call 5: hang-up after the reference -> partial email still goes",
   }
 });
 
+test("test call 1 fix: 'dart' heard for 'dot' in an email; name in title case", async () => {
+  const l = await startLine();
+  try {
+    await l.post("/answer/voice", CALL("CA6"));
+    await l.post("/answer/menu", CALL("CA6", { Digits: "1" }));
+    await l.post("/answer/name", CALL("CA6", { SpeechResult: "Jane citizen" }));
+    const r = await l.post("/answer/contact", CALL("CA6", { SpeechResult: "Jane dart citizen at example.com" }));
+    assert.match(said(r.text)[0]!, /jane dot citizen at example dot com/);
+    assert.equal(l.line.calls.get("CA6")?.name, "Jane Citizen");
+  } finally {
+    l.close();
+  }
+});
+
 test("unsigned or wrongly signed webhooks get 403", async () => {
   const l = await startLine();
   try {
