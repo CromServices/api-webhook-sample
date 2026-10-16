@@ -1,0 +1,375 @@
+[
+  {
+    "call": "call-1",
+    "t": 14.94,
+    "text": "A thousand and forty-two is my number.",
+    "issue": "misheard",
+    "lineReply": "Sorry, I didn't catch that. What's the order number?",
+    "expect": "number"
+  },
+  {
+    "call": "call-1",
+    "t": 22.61,
+    "text": "A thousand and forty-two",
+    "issue": "misheard",
+    "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam.",
+    "expect": "number"
+  },
+  {
+    "call": "call-2",
+    "t": 14.4,
+    "text": "Account number 42",
+    "issue": "misheard",
+    "lineReply": "Sorry, I didn't catch that. What's the order number?"
+  },
+  {
+    "call": "call-2",
+    "t": 21.31,
+    "text": "A thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?",
+    "expect": "number"
+  },
+  {
+    "call": "call-2",
+    "t": 42.41,
+    "text": "I said yes it was, one thousand and forty-two.",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?",
+    "expect": "number"
+  },
+  {
+    "call": "call-2",
+    "t": 50.43,
+    "text": "0 4 9 1",
+    "issue": "misheard",
+    "lineReply": "Sorry, I didn't catch that. What's the mobile number or email you used for the order?"
+  },
+  {
+    "call": "call-2",
+    "t": 60.56,
+    "text": "0 4 9 1 5 7 0 1 1 0",
+    "issue": "misheard",
+    "lineReply": "Sorry, I couldn't match those details to an order. Let's try once more. What's the order number?",
+    "expect": "contact"
+  },
+  {
+    "call": "call-2",
+    "t": 69.28,
+    "text": "Zero",
+    "issue": "misheard",
+    "lineReply": "Sorry, I didn't catch that. What's the order number?"
+  },
+  {
+    "call": "call-3",
+    "t": 6.34,
+    "text": "Hello?",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the order number?"
+  },
+  {
+    "call": "call-3",
+    "t": 15.98,
+    "text": "A thousand, a thousand, thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order three-oh-four-two?",
+    "expect": "number"
+  },
+  {
+    "call": "call-3",
+    "t": 24.84,
+    "text": "No, it's a thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?",
+    "expect": "number"
+  },
+  {
+    "call": "call-3",
+    "t": 30.97,
+    "text": "Yes.",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?"
+  },
+  {
+    "call": "call-3",
+    "t": 42.21,
+    "text": "[spoken mobile masked]",
+    "issue": "misheard",
+    "lineReply": "Sorry, I couldn't match those details to an order. Let's try once more. What's the order number?"
+  },
+  {
+    "call": "call-3",
+    "t": 55.55,
+    "text": "A thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?",
+    "expect": "number"
+  },
+  {
+    "call": "call-3",
+    "t": 61.45,
+    "text": "Yes.",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?"
+  },
+  {
+    "call": "call-3",
+    "t": 73.12,
+    "text": "It's crom services at g mail dot com dot A U.",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the mobile or email on the order?",
+    "expect": "contact"
+  },
+  {
+    "call": "call-3",
+    "t": 85.55,
+    "text": "Yeah, you've missed it a few times now. It's uh, 0 4",
+    "issue": "ok",
+    "lineReply": "Try the mobile number one digit at a time, or spell out the email."
+  },
+  {
+    "call": "call-3",
+    "t": 86.8,
+    "text": "Yeah, you've missed it a few times now. It's uh, [spoken mobile masked]",
+    "issue": "misheard",
+    "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
+  },
+  {
+    "call": "call-4",
+    "t": 7.83,
+    "text": "Hello?",
+    "issue": "ok",
+    "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+  },
+  {
+    "call": "call-4",
+    "t": 17.42,
+    "text": "Uh, it's a thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?"
+  },
+  {
+    "call": "call-4",
+    "t": 23.51,
+    "text": "Yes.",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?"
+  },
+  {
+    "call": "call-4",
+    "t": 35.29,
+    "text": "Uh, [spoken mobile masked]",
+    "issue": "misheard",
+    "lineReply": "Sorry, I couldn't match that to order one-oh-four-two. What's the mobile or email on it? Or your first name and the last three digits of your phone?"
+  },
+  {
+    "call": "call-4",
+    "t": 52.09,
+    "text": "Uh, just use crom services at g mail dot com dot A U",
+    "issue": "misheard",
+    "lineReply": "I still couldn't match those details, so I'll put you through to Sam."
+  },
+  {
+    "call": "call-5",
+    "t": 1.78,
+    "text": "Yes. (hello, before the greeting)",
+    "issue": "ok",
+    "lineReply": "Hi, it's Sam's Café. What's your order number?"
+  },
+  {
+    "call": "call-5",
+    "t": 9.91,
+    "text": "Uh, it's a thousand and forty-two",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?"
+  },
+  {
+    "call": "call-5",
+    "t": 15.16,
+    "text": "Yes.",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?"
+  },
+  {
+    "call": "call-5",
+    "t": 27.48,
+    "text": "It's 0 4 9 1 It's 0 4 9 1 5 7 0 1 5 6",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the mobile or email on the order?"
+  },
+  {
+    "call": "call-5",
+    "t": 37.05,
+    "text": "0 4 9 1",
+    "issue": "ok",
+    "lineReply": "Could you say the mobile one digit at a time, or spell out the email?"
+  },
+  {
+    "call": "call-5",
+    "t": 58.39,
+    "text": "0 4 9 1 5 7 0 1 1 0 zero 1 5 6",
+    "issue": "ok",
+    "lineReply": "Your order is on its way to you."
+  },
+  {
+    "call": "call-5",
+    "t": 67.4,
+    "text": "Yeah, can I raise another order?",
+    "issue": "ok",
+    "lineReply": "Sure. What's the order number?"
+  },
+  {
+    "call": "call-5",
+    "t": 75,
+    "text": "No, I want to create a new one.",
+    "issue": "misheard",
+    "lineReply": "Sorry, I can only help with orders on this line, but I can take a message for Sam. Sorry, I missed that. What's the order number?"
+  },
+  {
+    "call": "call-5",
+    "t": 79.36,
+    "text": "I want to buy something else from Sam's store.",
+    "issue": "ok",
+    "lineReply": "Could you say the order number one digit at a time? Like one, oh, four, two."
+  },
+  {
+    "call": "call-5",
+    "t": 92.84,
+    "text": "You nearly got there. Yeah, uh, best to send me to Sam so I can create another order.",
+    "issue": "misheard",
+    "lineReply": "I'm having trouble hearing you, so I'll put you through to Sam."
+  },
+  {
+    "call": "call-6",
+    "t": 13.89,
+    "text": "Hello? [quiet 1201 ms before reply]",
+    "issue": "ok",
+    "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+  },
+  {
+    "call": "call-6",
+    "t": 23,
+    "text": "A thousand and forty-two [quiet 1201 ms before reply]",
+    "issue": "ok",
+    "lineReply": "Is that order one-oh-four-two?"
+  },
+  {
+    "call": "call-6",
+    "t": 29.09,
+    "text": "Yep. [quiet 1200 ms before reply]",
+    "issue": "ok",
+    "lineReply": "Thanks. And what's the mobile number or email on the order?"
+  },
+  {
+    "call": "call-6",
+    "t": 41.72,
+    "text": "Uh yeah, 0 4 9 1 5 7 0 1 1 0 zero 1 5 6 [quiet 1200 ms before reply]",
+    "issue": "ok",
+    "lineReply": "Your order is on its way to you."
+  },
+  {
+    "call": "call-6",
+    "t": 62.11,
+    "text": "Yeah, can I raise another order? I'd like some coffees, uh, two dogs. I've got some, some extra work here as well for Sam, maybe some plumbing, uh, some fixes that I need to do on the house. [quiet 0 ms before reply]",
+    "issue": "ok",
+    "lineReply": "I can't take new orders or other requests on this line, but I can take a message for Sam. Want me to?"
+  },
+  {
+    "call": "call-6",
+    "t": 73.19,
+    "text": "Yes please. [quiet 1220 ms before reply]",
+    "issue": "ok",
+    "lineReply": "No worries, I'll pass you to Sam's voicemail so you can get a call back."
+  },
+  {
+    "call": "scenario-6219-rerun-change",
+    "t": 9.95,
+    "text": "1045",
+    "expect": "number"
+  },
+  {
+    "call": "scenario-6219-rerun-change",
+    "t": 16.0,
+    "text": "Yes."
+  },
+  {
+    "call": "scenario-6219-rerun-change",
+    "t": 21.55,
+    "text": "dom.padexample.com",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the mobile or email on the order?",
+    "expect": "contact"
+  },
+  {
+    "call": "scenario-6219-rerun-change",
+    "t": 33.5,
+    "text": "Can I change it to a long black instead?"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 13.6,
+    "text": "Ten forty-five",
+    "expect": "number"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 19.16,
+    "text": "Yes."
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 26.04,
+    "text": "John dot period example dot com",
+    "issue": "misheard",
+    "lineReply": "That contact doesn't match the details on order one-oh-four-five.",
+    "expect": "contact"
+  },
+  {
+    "call": "scenario-6219-rerun3-change",
+    "t": 38.16,
+    "text": "Can I change it to a long black instead?"
+  },
+  {
+    "call": "call-7",
+    "t": 0.0,
+    "text": "Hello?"
+  },
+  {
+    "call": "call-7",
+    "t": 17.66,
+    "text": "1042.",
+    "expect": "number"
+  },
+  {
+    "call": "call-7",
+    "t": 21.56,
+    "text": "Yes.",
+    "issue": "lost (said over the read-back)"
+  },
+  {
+    "call": "call-7",
+    "t": 31.84,
+    "text": "Yes."
+  },
+  {
+    "call": "call-7",
+    "t": 38.84,
+    "text": "I'm not sure, but my name's Ari.",
+    "issue": "misheard",
+    "lineReply": "Sorry, I missed that. What's the mobile or email on the order?"
+  },
+  {
+    "call": "call-7",
+    "t": 46.6,
+    "text": "I don't know. My name is Ari.",
+    "issue": "misheard",
+    "lineReply": "Could you say the mobile one digit at a time, or spell out the email?"
+  },
+  {
+    "call": "call-7",
+    "t": 55.68,
+    "text": "I don't have an email or phone number handy. My name is Ari.",
+    "issue": "misheard",
+    "lineReply": "Let me put you through to Sam, who can help."
+  }
+]

@@ -27,7 +27,8 @@ The public pages are a small shop and a stock count. Placing an order sends it, 
 | `src/story.ts` | Customer-facing labels |
 | `src/landing.ts` | Shared crom-shared v1.0.2 header and footer, pinned |
 | `src/server.ts` | Listen entry (`PORT`, `HOST`, `WEBHOOK_SECRET`, `DATA_PATH`, `DEMO_ADMIN_TOKEN`) |
-| `test/` | `node:test` suites |
+| `test/core/`, `test/phone/` | `node:test` suites, one folder per feature (shared webhook core, phone line) |
+| `scripts/phone/` | Phone line tools (test calls, intent eval, transcript loop) |
 | `docs/` | GitHub Pages page (the earlier static copy; the live demo is the Fly app) |
 | `Dockerfile`, `fly.toml` | Disposable demo host (`crom-api-webhook-demo`, `syd`) |
 
@@ -119,3 +120,24 @@ Site: https://cromservices.com.au · Packs: https://cromservices.github.io/job-p
 <a href="https://cromservices.com.au"><picture><source media="(prefers-color-scheme: dark)" srcset="https://cromservices.com.au/brand/credit/crom-credit-lockup-dark@2x.png"><img src="https://cromservices.com.au/brand/credit/crom-credit-lockup-light@2x.png" width="175" height="20" alt="Built by Crom Services"></picture></a>
 
 MIT, see LICENSE.
+
+## Phone line (sample, not switched on)
+
+`src/phone/` adds a read-only "where's my order" phone line for Sam's Café. Nothing in it can change an order.
+
+- `POST /phone/lookup`: body `{ "orderNumber": "...", "contact": "<AU phone or email>" }`, header `x-phone-line-key`. Returns `{ match: true, status, say }` only when the contact belongs to the order, otherwise the same `{ match: false, say }` whatever was wrong. AU phone formats and email case are normalised. Limited to 30 lookups a minute, and an order number with 5 wrong tries in 15 minutes is held (same "couldn't match" answer).
+- `src/phone/flow.ts`: the call as a pure state machine (greet, order number, contact, status; change requests, "talk to someone" and two failed matches go to the owner; no answer means a message and a text to the owner).
+- `src/phone/session.ts`: runs the flow against phone, text and lookup adapters (mocked in `test/phone/phone.test.ts`).
+- `GET /calls`: the private call log, behind a sign-in.
+- Orders come from a sample order book in `src/phone/orders.ts` (ACMA fiction-range numbers, example.com emails). It is part of the build, so it is the same after every restart.
+
+Both routes answer 404 until these are set with `fly secrets set` (never in the repo): `PHONE_LINE_KEY`, `CALL_LOG_USER`, `CALL_LOG_PASSWORD`. Optional: `CALL_LOG_PATH` (keep it on a volume, or calls are lost on restart), `SHOP_TIME_ZONE` (default Australia/Sydney), `DATA_SEED_PATH` (start the shop from a saved copy when the data file is missing; `GET /admin/state` downloads one).
+
+### Voice (Twilio + xAI)
+
+`POST /phone/voice` answers with `<Connect><Stream>` to `/phone/stream`; the bridge feeds μ-law 8 kHz audio
+to a `VoiceProvider` (xAI Grok Voice by default). The provider only hears and speaks: the flow in
+`src/phone/flow.ts` decides every line and can never change an order. **Swap point:** `src/phone/voice/provider.ts`
+(`VoiceProvider`); choose the provider in `src/server.ts`. A stub for Retell / native Grok SIP is there.
+Handover to Sam: `<Dial>` OWNER_NUMBER if set, otherwise voicemail (`<Record>`), logged on the owner-only `/calls` page.
+See DEPLOY.md.

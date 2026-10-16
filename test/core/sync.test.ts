@@ -4,11 +4,11 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createApp, type DemoApp } from "../src/app.ts";
-import { orderPayload } from "../src/deliver.ts";
-import { madeArrived, orderLine } from "../src/story.ts";
-import type { State } from "../src/store.ts";
-import { signBody } from "../src/verify.ts";
+import { createApp, type DemoApp } from "../../src/app.ts";
+import { orderPayload } from "../../src/deliver.ts";
+import { madeArrived, orderLine } from "../../src/story.ts";
+import type { State } from "../../src/store.ts";
+import { signBody } from "../../src/verify.ts";
 
 const SECRET = "test-secret-not-for-production";
 const TOKEN = "test-admin-token";

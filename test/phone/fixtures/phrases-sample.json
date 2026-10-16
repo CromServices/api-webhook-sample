@@ -1,0 +1,9 @@
+[
+ { "text": "Where is my order up to", "expect": "status" },
+ { "text": "What time do you close today", "expect": "hours" },
+ { "text": "Where are you located", "expect": "location" },
+ { "text": "Can I talk to someone please", "expect": "person" },
+ { "text": "Yes that's right", "expect": "yes" },
+ { "text": "Nope", "expect": "no" },
+ { "text": "I don't have the order number", "expect": "no_number" }
+]
