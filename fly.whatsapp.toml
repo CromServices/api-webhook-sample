@@ -1,0 +1,35 @@
+# WhatsApp sample: a SEPARATE Fly app (never deploy fly.toml or fly.phone.toml here, never this file elsewhere).
+#   flyctl deploy -c fly.whatsapp.toml
+# Secrets (fly secrets set, never here): WHATSAPP_ENABLED, TWILIO_AUTH_TOKEN, PUBLIC_BASE_URL,
+# WHATSAPP_INBOX_USER, WHATSAPP_INBOX_PASSWORD.
+app = "crom-whatsapp-sample"
+primary_region = "syd"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  SHOP_TIME_ZONE = "Australia/Perth"
+  WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
