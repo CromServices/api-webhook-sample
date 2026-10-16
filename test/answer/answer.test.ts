@@ -172,10 +172,10 @@ test("nothing the caller hears unprompted uses bot, AI or vendor wording; reply 
   assert.match(W.done, /in writing within 1 business day/);
 });
 
-test("phone L-064 answer is word for word, and 'assistant' is nowhere a caller can hear", () => {
-  assert.equal(ASKED_ABOUT_AI, "This line takes your details 24/7 so nothing gets missed, even after hours. Nate reviews every message himself and replies in writing."); // banned-patterns: allow (approved phone answer)
+test("phone L-064 answer is word for word, and 'assistant' or the owner's name is nowhere a caller can hear", () => {
+  assert.equal(ASKED_ABOUT_AI, "This line takes your details 24/7 so nothing gets missed, even after hours. The Crom team reviews every message and replies in writing.");
   const lines = [ASKED_ABOUT_AI, ...Object.values(W).map((v) => (typeof v === "function" ? (v as (s: string) => string)("one, two") : v))];
-  for (const line of lines) assert.doesNotMatch(line, /assistant/i, line);
+  for (const line of lines) assert.doesNotMatch(line, /assistant|\bNate\b|Nathan/i, line); // banned-patterns: allow (test pattern for the owner name)
 });
 
 test("summary email has no vendor wording and keeps the caller's details only in the private email", () => {
