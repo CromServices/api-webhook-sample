@@ -1,8 +1,8 @@
 /** Every line the caller hears. Public face: Crom Services. No bot or AI wording unless the caller asks. */
 
-/** Phone version of L-064, approved by Director 16 Oct 16:19 (relayed yes); used only when the caller asks. */
+/** Phone answer, L-068 text locked 22 Oct 20:21 AWST (relayed by Director); used only when the caller asks. */
 export const ASKED_ABOUT_AI =
-  "This line takes your details 24/7 so nothing gets missed, even after hours. The Crom team reviews every message and replies in writing.";
+  "This line takes your details 24/7 so nothing gets missed.";
 
 /** Caller asking whether this is a bot, AI, recording or a real person. */
 export const AI_QUESTION =
