@@ -3,7 +3,6 @@ dist
 .git
 .github
 test
-**/test
 *.md
 .env
 .env.*
