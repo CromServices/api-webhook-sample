@@ -1,7 +1,7 @@
 # Allow-list. Code and tests are skipped because they are not in the public scan.
 # Public scan (what customers see):
 #   docs/**/*.html
-#   shared/landing.ts          header and footer template
+#   src/landing.ts             header and footer template
 #   features/**/pages.ts       page templates
 #   features/**/story.ts       page copy
 #   features/**/fixtures/**/*.{html,txt,md}   capture text

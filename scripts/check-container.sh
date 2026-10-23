@@ -59,47 +59,11 @@ check_status() {
 
 check_status / 200
 check_status /health 200
-check_status /sheet 200
-check_status /alerts 200
-check_status /happened 200
-check_status /before-after 200
-check_status "/before-after?view=triage" 200
-check_status /shop 200
-check_status /stock 200
-check_status /history 200
-check_status /shop-before-after 200
-check_status "/shop-before-after?view=triage" 200
-check_status /shop-and-stock 200
-check_status /demo 301
-check_status "/demo?view=triage" 301
 
-home="$(curl -fsS "http://127.0.0.1:${PORT}/")"
-before="$(curl -fsS "http://127.0.0.1:${PORT}/before-after")"
-shop="$(curl -fsS "http://127.0.0.1:${PORT}/shop-before-after")"
-
-if grep -q "New leads: 0. In your sheet: 0" <<<"$home"; then
-  fail "GET / is an empty run after a cold boot"
-fi
-if ! grep -q "New leads: 3. In your sheet: 3" <<<"$home"; then
-  fail "GET / does not show the stored lead run"
-fi
-if ! grep -q "Jordan Hale" <<<"$home"; then
-  fail "GET / does not show a stored lead"
-fi
-if grep -q "New leads: 0. In your sheet: 0" <<<"$before"; then
-  fail "GET /before-after is an empty run after a cold boot"
-fi
-if ! grep -q "New leads: 3. In your sheet: 2 (1 copied twice, 1 missing)" <<<"$before"; then
-  fail "GET /before-after does not show the stored before run"
-fi
-if ! grep -q "New leads: 3. In your sheet: 3" <<<"$before"; then
-  fail "GET /before-after does not show the stored after run"
-fi
-if ! grep -q "Made 3. Arrived 2." <<<"$shop"; then
-  fail "GET /shop-before-after does not show the stored shop before run"
-fi
-if ! grep -q "Made 3. Arrived 3." <<<"$shop"; then
-  fail "GET /shop-before-after does not show the stored shop after run"
-fi
-
-echo "cold boot shows stored lead and shop runs"
+B='{"event":"ping"}'
+SIG="$(printf '%s' "$B" | openssl dgst -sha256 -hmac crom-demo-webhook-secret-v1 | awk '{print $2}')"
+ok="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -H "x-signature-256: sha256=${SIG}" --data "$B" "http://127.0.0.1:${PORT}/webhook")"
+[[ "$ok" == "200" ]] || fail "signed POST /webhook returned ${ok}, expected 200"
+bad="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' -H "x-signature-256: sha256=00" --data "$B" "http://127.0.0.1:${PORT}/webhook")"
+[[ "$bad" == "401" ]] || fail "bad-signature POST /webhook returned ${bad}, expected 401"
+echo "signed webhook 200, bad signature 401"

@@ -5,8 +5,8 @@ import {
   createApp,
   DEMO_WEBHOOK_BODY,
   DEMO_WEBHOOK_SECRET,
-} from "../app.ts";
-import { signBody, verifyHmacHeader } from "../../../shared/verify.ts";
+} from "../src/app.ts";
+import { signBody, verifyHmacHeader } from "../src/verify.ts";
 
 const SECRET = "test-secret-not-for-production";
 

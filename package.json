@@ -1,7 +1,7 @@
 {
   "name": "crom-api-webhook-sample",
   "version": "2.0.0",
-  "description": "Crom Services public sample: Facebook lead ads into a sheet, with an owner alert",
+  "description": "Crom Services public sample: HMAC-verified webhook endpoint",
   "private": true,
   "type": "module",
   "starter": {
@@ -15,12 +15,10 @@
   },
   "scripts": {
     "dev": "node --import tsx --watch src/server.ts",
-    "start": "node dist/src/server.js",
+    "start": "node dist/server.js",
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
-    "test": "node --import tsx --test features/*/test/*.test.ts test/*.test.ts",
-    "sample": "node --import tsx features/ad-leads/run-sample.ts",
-    "check:banned": "bash scripts/check-banned.sh"
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
     "express": "^5.2.1"

@@ -8,20 +8,6 @@ import path from "node:path";
 const RENDERED_ROUTES = [
   { path: "/", status: 200 },
   { path: "/health", status: 200 },
-  { path: "/sheet", status: 200 },
-  { path: "/alerts", status: 200 },
-  { path: "/happened", status: 200 },
-  { path: "/before-after", status: 200 },
-  { path: "/before-after?view=triage", status: 200 },
-  { path: "/leadgen", status: 403 },
-  { path: "/shop", status: 200 },
-  { path: "/stock", status: 200 },
-  { path: "/history", status: 200 },
-  { path: "/shop-before-after", status: 200 },
-  { path: "/shop-before-after?view=triage", status: 200 },
-  { path: "/shop-and-stock", status: 200 },
-  { path: "/demo", status: 301 },
-  { path: "/demo?view=triage", status: 301 },
 ];
 
 const root = process.cwd();
@@ -73,7 +59,7 @@ function walk(dir, out) {
 
 function isPublic(rel) {
   if (rel.startsWith("docs/") && rel.endsWith(".html")) return true;
-  if (rel === "shared/landing.ts") return true;
+  if (rel === "src/landing.ts") return true;
   if (/^features\/[^/]+\/pages\.ts$/.test(rel)) return true;
   if (/^features\/[^/]+\/story\.ts$/.test(rel)) return true;
   if (/^features\/[^/]+\/fixtures\/.+\.(html|txt|md)$/.test(rel)) return true;
