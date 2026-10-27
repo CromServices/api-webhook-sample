@@ -10,7 +10,7 @@ import { AI_QUESTION, ASKED_ABOUT_AI, W } from "./words.ts";
 
 /**
  * Crom Services answering line (Twilio, TwiML + Gather, no live handover).
- *   POST /answer/voice        greeting + menu (1 support message, 2 Sam's Café sample -> /phone/voice)
+ *   POST /answer/voice        greeting + menu (1 support message, 2 Gannet Street Kitchen sample -> /phone/voice)
  *   POST /answer/menu|name|contact|ref|confirm   one step each (Gather action)
  *   POST /answer/recorded     <Record> done -> closing line
  *   POST /answer/recording    recording ready -> transcript + summary email
@@ -133,7 +133,7 @@ export function mountAnswerLine(app: Express, opts: AnswerOptions) {
     if (!signed(req, res)) return;
     const c = call(req);
     persist();
-    twiml(res, say(W.greeting) + gather("menu", W.menu, { digits: "one", hints: "support, one, two, Sam's Cafe" }));
+    twiml(res, say(W.greeting) + gather("menu", W.menu, { digits: "one", hints: "support, one, two, Gannet Street Kitchen" }));
   });
 
   app.post("/answer/menu", (req, res) => {
@@ -142,7 +142,7 @@ export function mountAnswerLine(app: Express, opts: AnswerOptions) {
     const d = keyed(req);
     const s = heard(req);
     if (askedAboutAi(s)) return twiml(res, say(ASKED_ABOUT_AI) + gather("menu", W.menu, { digits: "one" }));
-    if (d === "2" || /\b(two|2|sam|cafe|café)\b/i.test(s)) {
+    if (d === "2" || /\b(two|2|gannet|kitchen|cafe|café)\b/i.test(s)) {
       c.step = "cafe";
       persist();
       return twiml(res, `<Redirect method="POST">${xml(`${base}/phone/voice`)}</Redirect>`);

@@ -22,7 +22,7 @@ primary_region = "syd"
   PHONE_CONFIRM_REASK = "1"
   PHONE_VOICEMAIL_TRANSCRIBE = "1"  # xAI speech-to-text, not Twilio
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
-  # Crom Services answering line (/answer/*): menu 1 support message -> summary email, 2 -> the Sam's Café sample.
+  # Crom Services answering line (/answer/*): menu 1 support message -> summary email, 2 -> the Gannet Street Kitchen sample.
   # RESEND_API_KEY is a fly secret (sending-only, demo.cromservices.com.au).
   ANSWER_LINE = "1"
   ANSWER_EMAIL_TO = "cromservices@gmail.com"

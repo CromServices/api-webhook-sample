@@ -91,13 +91,13 @@ test("scripted call 2: spoken menu, phone contact, wrong read-back then keyed re
   }
 });
 
-test("scripted call 3: option 2 goes to the Sam's Café sample line", async () => {
+test("scripted call 3: option 2 goes to the Gannet Street Kitchen sample line", async () => {
   const l = await startLine();
   try {
     await l.post("/answer/voice", CALL("CA3"));
     const r = await l.post("/answer/menu", CALL("CA3", { Digits: "2" }));
     assert.equal(actionOf(r.text), "/phone/voice");
-    const s = await l.post("/answer/menu", CALL("CA3b", { SpeechResult: "Sam's cafe" }));
+    const s = await l.post("/answer/menu", CALL("CA3b", { SpeechResult: "Gannet Street Kitchen" }));
     assert.equal(actionOf(s.text), "/phone/voice");
     await l.post("/answer/status", CALL("CA3", { CallStatus: "completed" }));
     await wait(40);

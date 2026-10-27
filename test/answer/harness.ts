@@ -11,7 +11,7 @@ export async function startLine(extra: { mailFail?: boolean } = {}) {
   const sent: any[] = [];
   const app = express();
   app.use(express.urlencoded({ extended: false }));
-  // Sam's Café sample stand-in, to prove option 2 lands on /phone/voice.
+  // Gannet Street Kitchen sample stand-in, to prove option 2 lands on /phone/voice.
   app.post("/phone/voice", (_req, res) => res.type("text/xml").send("<Response><Say>cafe</Say></Response>"));
   const line = mountAnswerLine(app, {
     authToken: TOKEN,

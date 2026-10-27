@@ -47,7 +47,7 @@ describe("phone line: real call turns (regression)", () => {
 describe("phone line: transcript loop", () => {
   it("finds misheard turns and masks numbers", () => {
     const raw = [
-      "+1.0s line: Hi, it's Sam's Café. What's your order number?",
+      "+1.0s line: Hi, it's Gannet Street Kitchen. What's your order number?",
       "+5.0s caller: blah [join wait 900 ms]",
       "+5.1s line: Sorry, I missed that. What's the order number?",
       "+9.0s caller: 0 4 1 2 3 4 5 6 7 8",

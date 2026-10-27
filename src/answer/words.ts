@@ -11,7 +11,7 @@ export const AI_QUESTION =
 export const W = {
   greeting: "Thanks for calling Crom Services.",
   menu:
-    "To leave a support message about an order or a job, press 1 or say support. For the Sam's Café sample line, press 2.",
+    "To leave a support message about an order or a job, press 1 or say support. For the Gannet Street Kitchen sample line, press 2.",
   menuAgain: "Sorry, I didn't catch that.",
   name: "Okay. First, what's your name?",
   contact: "Thanks. What's the best email address or phone number for our reply?",
