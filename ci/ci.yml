@@ -20,6 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "22" }
       - run: node scripts/ci/banned-patterns.mjs
+        env:
+          BANNED_NAME_PATTERNS: ${{ secrets.BANNED_NAME_PATTERNS }}
   test:
     runs-on: ubuntu-latest
     steps:
