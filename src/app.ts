@@ -8,6 +8,7 @@ import { demoPage, historyPage, homePage, shopPage, stockPage } from "./pages.ts
 import { openStore, type Picture } from "./store.ts";
 import { verifyHmacHeader } from "./verify.ts";
 import { mountPhoneLine, type PhoneLineOptions } from "./phone/routes.ts";
+import { mountWhatsApp, type WhatsAppOptions } from "./whatsapp/routes.ts";
 
 /**
  * Published public sample secret for the disposable hosted demo.
@@ -33,6 +34,8 @@ export type AppOptions = {
   dataSeedPath?: string;
   /** Phone line. Its routes stay closed (404) unless their secrets are set. */
   phoneLine?: PhoneLineOptions;
+  /** WhatsApp replies. Unset = routes not mounted. */
+  whatsApp?: WhatsAppOptions;
 };
 
 export type DemoApp = Express & {
@@ -316,6 +319,7 @@ export function createApp(opts: AppOptions): DemoApp {
   });
 
   const phone = mountPhoneLine(app, opts.phoneLine);
+  if (opts.whatsApp) mountWhatsApp(app, opts.whatsApp);
 
   return Object.assign(app, {
     attachPhone: phone.attach,
