@@ -3,7 +3,7 @@
  */
 export const STORY = {
   pageTitle: "Ad leads into your sheet: sample",
-  shopName: "Sam's Café · catering leads",
+  shopName: "Gannet Street Kitchen · catering leads",
   h1: "Catering enquiries land in your sheet",
   lead: "A new enquiry from Facebook is written into your sheet, and you hear about it straight away.",
   before: "Before",

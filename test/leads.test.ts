@@ -579,7 +579,7 @@ describe("the same leads, both ways", () => {
       /\b(webhook|payload|signature|apis?|bots?|guid|uuid|github|demo)\b|\bAI\b|\b\d{1,2}:\d{2}\b|\b(am|pm)\b/i;
     for (const [route, html] of pages) {
       assert.match(html, /<title>Ad leads into your sheet: sample<\/title>/, route);
-      assert.match(html, /Sam's Café · catering leads/, route);
+      assert.match(html, /Gannet Street Kitchen · catering leads/, route);
       assert.match(html, /Crom Services · Australia/, route);
       assert.match(html, /cromservices@gmail.com/, route);
       assert.doesNotMatch(html, /crom-tag/, route);
