@@ -133,7 +133,11 @@ describe("GET / landing page", () => {
   });
 
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {
-    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
+    assert.doesNotMatch(html, /Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
+    // Owner name patterns are never written in the repo: BANNED_NAME_PATTERNS (env / CI secret only).
+    const names = process.env.BANNED_NAME_PATTERNS;
+    if (names) assert.doesNotMatch(html, new RegExp(names, "i"));
+    else console.error("landing test: owner-name assertion skipped (BANNED_NAME_PATTERNS not set)");
   });
 
   it("leaves /health as {ok:true}", async () => {
