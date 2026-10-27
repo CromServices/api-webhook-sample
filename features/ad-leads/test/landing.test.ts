@@ -58,7 +58,7 @@ describe("public pages", () => {
 
   it("names the café and keeps the sample marker to the browser title", () => {
     assert.match(html, /<title>Ad leads into your sheet: sample<\/title>/);
-    assert.match(html, /Sam's Café · catering leads/);
+    assert.match(html, /Gannet Street Kitchen · catering leads/);
     assert.match(html, /Catering enquiries land in your sheet/);
     assert.doesNotMatch(visible(html), /\bsample\b|\bdemo\b|\bexample\b/i);
     assert.doesNotMatch(html, /github\.com/i);
