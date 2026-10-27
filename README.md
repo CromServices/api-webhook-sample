@@ -99,7 +99,7 @@ npm test
 npm run dev        # http://localhost:3000/
 ```
 
-`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value. Orders and stock are stored in `DATA_PATH` (default `data/demo-shop.json`). On Fly that file lives on one machine's disk (`flyctl scale count 1`); auto-stop keeps the disk, and a new deploy starts empty. Do not attach a volume. Set `DEMO_ADMIN_TOKEN` in the environment (or `fly secrets set`) to use the private controls; they answer 401 when it is missing.
+`npm run build` compiles to `dist/`, and `npm start` runs the compiled server. `PORT` defaults to 3000; `WEBHOOK_SECRET` defaults to the published demo value. Orders and stock are stored in `DATA_PATH` (default `data/demo-shop.json`). On Fly that file lives on one machine's disk (`flyctl scale count 1`) and the disk is new on every start, stop or deploy. The WhatsApp sample starts from the saved shop in `seed/demo-shop.json` (`DATA_SEED_PATH`, copied into the image) whenever the data file is missing, so a cold boot shows the sample orders. Other apps without a seed start empty. Do not attach a volume. Set `DEMO_ADMIN_TOKEN` in the environment (or `fly secrets set`) to use the private controls; they answer 401 when it is missing.
 
 Deploy: a push to `main` runs `.github/workflows/fly.yml`, which deploys to Fly when the `FLY_API_TOKEN` repository secret is set (and skips cleanly when it is not). `docs/` is published by `.github/workflows/pages.yml`.
 

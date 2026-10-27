@@ -1,0 +1,421 @@
+{
+  "openedAt": "2026-10-27T13:45:02.859Z",
+  "mode": "fixed",
+  "stockUp": true,
+  "slowMs": 0,
+  "nextId": 1045,
+  "products": [
+    {
+      "name": "Flat white",
+      "onHand": 11,
+      "opening": 12
+    },
+    {
+      "name": "Long black",
+      "onHand": 11,
+      "opening": 12
+    },
+    {
+      "name": "Banana bread",
+      "onHand": 11,
+      "opening": 12
+    }
+  ],
+  "shopOrders": [
+    {
+      "id": "1041",
+      "product": "Flat white",
+      "qty": 1,
+      "placedAt": "2026-10-27T13:45:03.054Z",
+      "hold": false
+    },
+    {
+      "id": "1042",
+      "product": "Long black",
+      "qty": 1,
+      "placedAt": "2026-10-27T13:45:03.632Z",
+      "hold": false
+    },
+    {
+      "id": "1043",
+      "product": "Banana bread",
+      "qty": 1,
+      "placedAt": "2026-10-27T13:45:04.412Z",
+      "hold": false
+    }
+  ],
+  "stockOrders": [
+    {
+      "id": "1041",
+      "product": "Flat white",
+      "qty": 1,
+      "receivedAt": "2026-10-27T13:45:03.057Z"
+    },
+    {
+      "id": "1042",
+      "product": "Long black",
+      "qty": 1,
+      "receivedAt": "2026-10-27T13:45:04.137Z"
+    },
+    {
+      "id": "1043",
+      "product": "Banana bread",
+      "qty": 1,
+      "receivedAt": "2026-10-27T13:45:04.414Z"
+    }
+  ],
+  "attempts": [
+    {
+      "at": "2026-10-27T13:45:03.055Z",
+      "orderId": "1041",
+      "product": "Flat white",
+      "qty": 1,
+      "outcome": "ok",
+      "httpStatus": 200,
+      "waitedMs": 0
+    },
+    {
+      "at": "2026-10-27T13:45:03.632Z",
+      "orderId": "1042",
+      "product": "Long black",
+      "qty": 1,
+      "outcome": "down",
+      "httpStatus": 503,
+      "waitedMs": 0
+    },
+    {
+      "at": "2026-10-27T13:45:04.136Z",
+      "orderId": "1042",
+      "product": "Long black",
+      "qty": 1,
+      "outcome": "ok",
+      "httpStatus": 200,
+      "waitedMs": 500
+    },
+    {
+      "at": "2026-10-27T13:45:04.412Z",
+      "orderId": "1043",
+      "product": "Banana bread",
+      "qty": 1,
+      "outcome": "ok",
+      "httpStatus": 200,
+      "waitedMs": 0
+    },
+    {
+      "at": "2026-10-27T13:45:04.803Z",
+      "orderId": "1041",
+      "product": "Flat white",
+      "qty": 1,
+      "outcome": "duplicate",
+      "httpStatus": 200,
+      "waitedMs": 0
+    },
+    {
+      "at": "2026-10-27T13:45:05.192Z",
+      "orderId": "1044",
+      "product": "Flat white",
+      "qty": 1,
+      "outcome": "rejected",
+      "httpStatus": 401,
+      "waitedMs": 0
+    }
+  ],
+  "controls": [
+    {
+      "at": "2026-10-27T13:45:02.859Z",
+      "kind": "reset",
+      "detail": "fixed"
+    },
+    {
+      "at": "2026-10-27T13:45:03.439Z",
+      "kind": "stock",
+      "detail": "down"
+    },
+    {
+      "at": "2026-10-27T13:45:04.021Z",
+      "kind": "stock",
+      "detail": "up"
+    },
+    {
+      "at": "2026-10-27T13:45:04.803Z",
+      "kind": "resend",
+      "detail": "1041"
+    },
+    {
+      "at": "2026-10-27T13:45:05.190Z",
+      "kind": "bad-delivery",
+      "detail": "noted 1044"
+    },
+    {
+      "at": "2026-10-27T13:45:05.385Z",
+      "kind": "snapshot",
+      "detail": "after"
+    }
+  ],
+  "snapshots": {
+    "before": {
+      "savedAt": "2026-10-27T13:45:02.665Z",
+      "openedAt": "2026-10-27T13:44:46.919Z",
+      "mode": "old",
+      "controls": [
+        {
+          "at": "2026-10-27T13:44:59.938Z",
+          "kind": "mode",
+          "detail": "old"
+        },
+        {
+          "at": "2026-10-27T13:45:00.819Z",
+          "kind": "slow",
+          "detail": "600"
+        },
+        {
+          "at": "2026-10-27T13:45:02.272Z",
+          "kind": "slow",
+          "detail": "0"
+        },
+        {
+          "at": "2026-10-27T13:45:02.466Z",
+          "kind": "bad-delivery",
+          "detail": "shop 1043"
+        }
+      ],
+      "products": [
+        {
+          "name": "Flat white",
+          "onHand": 11,
+          "opening": 12
+        },
+        {
+          "name": "Long black",
+          "onHand": 10,
+          "opening": 12
+        },
+        {
+          "name": "Banana bread",
+          "onHand": 12,
+          "opening": 12
+        }
+      ],
+      "shopOrders": [
+        {
+          "id": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:00.291Z",
+          "hold": false
+        },
+        {
+          "id": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:01.013Z",
+          "hold": false
+        },
+        {
+          "id": "1043",
+          "product": "Banana bread",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:02.466Z",
+          "hold": true
+        }
+      ],
+      "stockOrders": [
+        {
+          "id": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:00.336Z"
+        },
+        {
+          "id": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:01.016Z"
+        },
+        {
+          "id": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:01.919Z"
+        }
+      ],
+      "attempts": [
+        {
+          "at": "2026-10-27T13:45:00.291Z",
+          "orderId": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "outcome": "ok",
+          "httpStatus": 200,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:01.013Z",
+          "orderId": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "outcome": "down",
+          "httpStatus": null,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:01.916Z",
+          "orderId": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "outcome": "ok",
+          "httpStatus": 200,
+          "waitedMs": 500
+        }
+      ]
+    },
+    "after": {
+      "savedAt": "2026-10-27T13:45:05.385Z",
+      "openedAt": "2026-10-27T13:45:02.859Z",
+      "mode": "fixed",
+      "controls": [
+        {
+          "at": "2026-10-27T13:45:02.859Z",
+          "kind": "reset",
+          "detail": "fixed"
+        },
+        {
+          "at": "2026-10-27T13:45:03.439Z",
+          "kind": "stock",
+          "detail": "down"
+        },
+        {
+          "at": "2026-10-27T13:45:04.021Z",
+          "kind": "stock",
+          "detail": "up"
+        },
+        {
+          "at": "2026-10-27T13:45:04.803Z",
+          "kind": "resend",
+          "detail": "1041"
+        },
+        {
+          "at": "2026-10-27T13:45:05.190Z",
+          "kind": "bad-delivery",
+          "detail": "noted 1044"
+        }
+      ],
+      "products": [
+        {
+          "name": "Flat white",
+          "onHand": 11,
+          "opening": 12
+        },
+        {
+          "name": "Long black",
+          "onHand": 11,
+          "opening": 12
+        },
+        {
+          "name": "Banana bread",
+          "onHand": 11,
+          "opening": 12
+        }
+      ],
+      "shopOrders": [
+        {
+          "id": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:03.054Z",
+          "hold": false
+        },
+        {
+          "id": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:03.632Z",
+          "hold": false
+        },
+        {
+          "id": "1043",
+          "product": "Banana bread",
+          "qty": 1,
+          "placedAt": "2026-10-27T13:45:04.412Z",
+          "hold": false
+        }
+      ],
+      "stockOrders": [
+        {
+          "id": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:03.057Z"
+        },
+        {
+          "id": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:04.137Z"
+        },
+        {
+          "id": "1043",
+          "product": "Banana bread",
+          "qty": 1,
+          "receivedAt": "2026-10-27T13:45:04.414Z"
+        }
+      ],
+      "attempts": [
+        {
+          "at": "2026-10-27T13:45:03.055Z",
+          "orderId": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "outcome": "ok",
+          "httpStatus": 200,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:03.632Z",
+          "orderId": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "outcome": "down",
+          "httpStatus": 503,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:04.136Z",
+          "orderId": "1042",
+          "product": "Long black",
+          "qty": 1,
+          "outcome": "ok",
+          "httpStatus": 200,
+          "waitedMs": 500
+        },
+        {
+          "at": "2026-10-27T13:45:04.412Z",
+          "orderId": "1043",
+          "product": "Banana bread",
+          "qty": 1,
+          "outcome": "ok",
+          "httpStatus": 200,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:04.803Z",
+          "orderId": "1041",
+          "product": "Flat white",
+          "qty": 1,
+          "outcome": "duplicate",
+          "httpStatus": 200,
+          "waitedMs": 0
+        },
+        {
+          "at": "2026-10-27T13:45:05.192Z",
+          "orderId": "1044",
+          "product": "Flat white",
+          "qty": 1,
+          "outcome": "rejected",
+          "httpStatus": 401,
+          "waitedMs": 0
+        }
+      ]
+    }
+  }
+}

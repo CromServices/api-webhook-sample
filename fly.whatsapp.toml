@@ -13,6 +13,8 @@ primary_region = "syd"
   NODE_ENV = "production"
   SHOP_TIME_ZONE = "Australia/Perth"
   WEBHOOK_SECRET = "crom-demo-webhook-secret-v1"
+  # Cold boot starts from the saved sample shop (no volume; the disk is new on every start).
+  DATA_SEED_PATH = "/app/seed/demo-shop.json"
 
 [http_service]
   internal_port = 3000

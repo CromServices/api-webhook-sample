@@ -16,6 +16,7 @@ ENV PORT=3000
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY seed ./seed
 ENV DATA_PATH=/app/data/demo-shop.json
 RUN mkdir -p /app/data && chown node:node /app/data
 USER node
