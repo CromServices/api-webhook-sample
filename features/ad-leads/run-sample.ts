@@ -99,7 +99,7 @@ function runSection(title: string, shot: Snapshot | null): string[] {
 
 function writeNotes(state: State): void {
   const lines = [
-    "# Sam's Café catering leads",
+    "# Gannet Street Kitchen catering leads",
     "",
     "Figures read from the stored runs after both finished. Times are UTC. The app secret was generated in memory and is not recorded.",
     "",
