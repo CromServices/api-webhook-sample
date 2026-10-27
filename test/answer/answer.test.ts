@@ -175,7 +175,13 @@ test("nothing the caller hears unprompted uses bot, AI or vendor wording; reply 
 test("phone L-064 answer is word for word, and 'assistant' or the owner's name is nowhere a caller can hear", () => {
   assert.equal(ASKED_ABOUT_AI, "This line takes your details 24/7 so nothing gets missed.");
   const lines = [ASKED_ABOUT_AI, ...Object.values(W).map((v) => (typeof v === "function" ? (v as (s: string) => string)("one, two") : v))];
-  for (const line of lines) assert.doesNotMatch(line, /assistant|\bNate\b|Nathan/i, line); // banned-patterns: allow (test pattern for the owner name)
+  // Owner name patterns are never written in the repo: BANNED_NAME_PATTERNS (env / CI secret only).
+  const names = process.env.BANNED_NAME_PATTERNS ? new RegExp(process.env.BANNED_NAME_PATTERNS, "i") : null;
+  if (!names) console.error("answer test: owner-name assertion skipped (BANNED_NAME_PATTERNS not set)");
+  for (const line of lines) {
+    assert.doesNotMatch(line, /assistant/i, line);
+    if (names) assert.doesNotMatch(line, names, line);
+  }
 });
 
 test("summary email has no vendor wording and keeps the caller's details only in the private email", () => {
