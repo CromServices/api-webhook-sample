@@ -1,0 +1,32 @@
+name: CI (L-054)
+# STAGED: move to .github/workflows/ci.yml to switch on (pushing workflow files needs a token with the GitHub `workflow` scope).
+# Fails on banned patterns (secrets, real phone numbers, personal emails, owner name,
+# vendor wording in public copy, phrase datasets in public folders) and on failing tests.
+# Mirrors CromServices/crom-shared ci/workflows/node-ci.yml (that file is not yet under
+# .github/workflows there, so it can't be called with `uses:`; switch when it is).
+on:
+  push:
+    branches: [phone-line-sample, whatsapp-sample]
+  pull_request:
+    branches: [phone-line-sample, whatsapp-sample]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  banned-patterns:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: node scripts/ci/banned-patterns.mjs
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm }
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - run: npm test

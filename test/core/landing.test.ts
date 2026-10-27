@@ -1,9 +1,9 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import type { Server } from "node:http";
-import { createApp } from "../src/app.ts";
-import { THEME_CSS_URL } from "../src/landing.ts";
-import { STORY } from "../src/story.ts";
+import { createApp } from "../../src/app.ts";
+import { THEME_CSS_URL } from "../../src/landing.ts";
+import { STORY } from "../../src/story.ts";
 
 const PIN = "https://cdn.jsdelivr.net/gh/CromServices/crom-shared@v1.0.2/";
 
@@ -44,7 +44,7 @@ describe("GET / landing page", () => {
     assert.match(html, /<footer class="crom-footer">/);
     assert.match(html, /<a href="https:\/\/cromservices\.com\.au"[^>]*aria-label="Built by Crom Services"/);
     assert.match(html, /Crom Services · Australia/);
-    assert.match(html, /Sam's Café · shop and stock/);
+    assert.match(html, /Gannet Street Kitchen · shop and stock/);
     assert.doesNotMatch(visibleText(html), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
   });
 
@@ -104,7 +104,7 @@ describe("GET / landing page", () => {
       assert.doesNotMatch(page, /\d{4}-\d{2}-\d{2}T|\/admin|hmac|signature|payload|bearer/i, path);
       assert.match(page, /<title>Shop-to-stock order sync: sample<\/title>/, path);
       assert.doesNotMatch(page, /Demo shop, not a real business|See the code on GitHub|Sample · example project/, path);
-      assert.match(page, /Sam's Café · shop and stock/, path);
+      assert.match(page, /Gannet Street Kitchen · shop and stock/, path);
       assert.doesNotMatch(visibleText(page), /\b\d{1,2}:\d{2}\s*(am|pm)\b/i, path);
     }
     const demo = await (await fetch(`${baseUrl}/demo`)).text();
@@ -123,7 +123,7 @@ describe("GET / landing page", () => {
   });
 
   it("keeps the public face clean (no city, state, postcode, names or price)", () => {
-    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);
+    assert.doesNotMatch(html, /Nathan|\bNate\b|Grok|Perth|\bWA\b|6162|\$\s?\d|\bAUD\b|\bprice|\bquote\b/i);  // banned-patterns: allow (asserts the name is absent)
   });
 
   it("leaves /health as {ok:true}", async () => {

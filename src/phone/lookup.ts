@@ -1,0 +1,80 @@
+import { normaliseContact, normaliseOrderNumber, spokenDigits } from "./normalise.ts";
+import { STATUS_WORDS, contactMatches, type OrderSource, type OrderStatus } from "./orders.ts";
+
+/** The only two shapes the phone line ever gets back. */
+export type LookupResult =
+  | { match: true; status: OrderStatus; say: string }
+  | { match: false; say: string; /** Several orders fit the name + last 3: hand over, reveal nothing. */ ambiguous?: true };
+
+export const NO_MATCH_SAY =
+  "Sorry, I couldn't match those details to an order.";
+
+const NO_MATCH: LookupResult = Object.freeze({ match: false, say: NO_MATCH_SAY });
+
+/**
+ * Status only, and only when the contact belongs to the order. Wrong order,
+ * wrong contact, bad input: all give the same answer, so a caller can't tell
+ * which part was wrong. Reads only; never writes.
+ */
+export function lookupOrder(source: OrderSource, orderInput: unknown, contactInput: unknown): LookupResult {
+  if (typeof orderInput !== "string" || typeof contactInput !== "string") return NO_MATCH;
+  const number = normaliseOrderNumber(orderInput);
+  const contact = normaliseContact(contactInput);
+  if (!number || !contact) return NO_MATCH;
+  const order = source.find(number);
+  if (!order || !contactMatches(order, contact)) return NO_MATCH;
+  return { match: true, status: order.status, say: STATUS_WORDS[order.status].said };
+}
+
+/**
+ * No order number: the caller gives their first name and the last 3 digits of
+ * the phone on the order. Exactly one order must match both, else NO_MATCH.
+ */
+/**
+ * With a confirmed order number, only THAT order can match (never another order's status).
+ * Without one, exactly one order must match; several -> ambiguous (hand over to Sam).
+ */
+export function lookupByName(source: OrderSource, text: unknown, orderNumber?: string | null): LookupResult {
+  if (typeof text !== "string" || text.length > 200 || !source.all) return NO_MATCH;
+  const digits = spokenDigits(text);
+  if (digits.length < 3) return NO_MATCH;
+  const last3 = digits.slice(-3);
+  const words = new Set(text.toLowerCase().match(/[a-z]+/g) ?? []);
+  let hits = source.all().filter((o) => o.name && words.has(o.name.toLowerCase()) && o.phone.endsWith(last3));
+  if (orderNumber) hits = hits.filter((o) => o.number === orderNumber);
+  if (hits.length > 1) return { match: false, say: NO_MATCH_SAY, ambiguous: true };
+  if (hits.length !== 1) return NO_MATCH;
+  const order = hits[0]!;
+  return { match: true, status: order.status, say: STATUS_WORDS[order.status].said };
+}
+
+/**
+ * Fixed-window counter. In memory on purpose: limits reset with the process,
+ * which is fine for a guard (nothing to keep).
+ */
+export function createRateLimiter(opts: { limit: number; windowMs: number; now?: () => number }) {
+  const now = opts.now ?? Date.now;
+  const hits = new Map<string, { start: number; count: number }>();
+  return {
+    /** Counts one hit. Returns false once the key is over its limit for this window. */
+    take(key: string): boolean {
+      const t = now();
+      const row = hits.get(key);
+      if (!row || t - row.start >= opts.windowMs) {
+        hits.set(key, { start: t, count: 1 });
+        if (hits.size > 10_000) {
+          for (const [k, v] of hits) if (t - v.start >= opts.windowMs) hits.delete(k);
+        }
+        return true;
+      }
+      row.count += 1;
+      return row.count <= opts.limit;
+    },
+    /** True if the key is already over its limit, without counting a hit. */
+    blocked(key: string): boolean {
+      const row = hits.get(key);
+      if (!row || now() - row.start >= opts.windowMs) return false;
+      return row.count >= opts.limit;
+    },
+  };
+}

@@ -4,11 +4,11 @@ import { mkdtempSync, readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createApp, type DemoApp } from "../src/app.ts";
-import { orderPayload } from "../src/deliver.ts";
-import { madeArrived, orderLine } from "../src/story.ts";
-import type { State } from "../src/store.ts";
-import { signBody } from "../src/verify.ts";
+import { createApp, type DemoApp } from "../../src/app.ts";
+import { orderPayload } from "../../src/deliver.ts";
+import { madeArrived, orderLine } from "../../src/story.ts";
+import type { State } from "../../src/store.ts";
+import { signBody } from "../../src/verify.ts";
 
 const SECRET = "test-secret-not-for-production";
 const TOKEN = "test-admin-token";
@@ -467,7 +467,7 @@ describe("saved before and after", () => {
     assert.match(demo, /Rejected, not from your shop/);
     assert.match(demo, /Didn't arrive, sent again, arrived/);
     assert.doesNotMatch(demo, /Demo shop, not a real business|See the code on GitHub|Sample · example project/);
-    assert.match(demo, /Sam's Café · shop and stock/);
+    assert.match(demo, /Gannet Street Kitchen · shop and stock/);
     assert.doesNotMatch(demo, /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
     assert.equal((demo.match(/>What we checked</g) ?? []).length, 1);
     assert.match(demo, /<title>Shop-to-stock order sync: sample<\/title>/);
@@ -499,10 +499,10 @@ describe("saved before and after", () => {
     assert.match(triage, /Then a turned-away order is noted, so it is not lost/);
     assert.match(triage, /Orders from before the switch-on weren't copied across/);
     assert.doesNotMatch(triage, /Demo shop, not a real business|See the code on GitHub|Sample · example project/);
-    assert.match(triage, /Sam's Café · shop and stock/);
+    assert.match(triage, /Gannet Street Kitchen · shop and stock/);
     assert.doesNotMatch(triage, /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
     const history = await (await fetch(`${base}/history`)).text();
-    assert.match(history, /Sam's Café · shop and stock/);
+    assert.match(history, /Gannet Street Kitchen · shop and stock/);
     assert.doesNotMatch(history, /\b\d{1,2}:\d{2}\s*(am|pm)\b/i);
     assert.match(history, /Didn't arrive, sent again, arrived/);
     assert.equal((triage.match(/>Before and after</g) ?? []).length, 1);
