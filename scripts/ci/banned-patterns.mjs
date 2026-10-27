@@ -59,10 +59,22 @@ const allowedEmail = (e) => /^cromservices@gmail\.com$/i.test(e);
 // Published demo-only values (the sample's documented HMAC demo secret, test fixtures) are not secrets.
 const DEMO_VALUE = /["'](crom-demo-[\w-]+|test-secret-not-for-production)["']/;
 // Made-up addresses in speech-to-text test fixtures are fine; the owner's own local parts never are.
-const OWNER_LOCAL = /^(naths?|nathan|nate|sharp)[._-]?/i;
 
 // 4. Public face: owner's name anywhere in tracked text (L-032).
-const OWNER_NAME = /\b(Nathan|Nate|naths)\b|\bNathan Sharp\b/;
+// Owner name rules. The patterns are never stored here: BANNED_NAME_PATTERNS (env / CI secret only) holds one regex source.
+// Unset: the name rules are skipped with a notice locally, and the run fails when CI is set (fail closed).
+const NAME_SRC = process.env.BANNED_NAME_PATTERNS ?? "";
+let OWNER_NAME = null;
+let OWNER_LOCAL = null;
+if (NAME_SRC) {
+  OWNER_NAME = new RegExp(NAME_SRC);
+  OWNER_LOCAL = new RegExp(NAME_SRC, "i");
+} else if (process.env.CI) {
+  console.error("banned-patterns: BANNED_NAME_PATTERNS is not set (required in CI)");
+  process.exit(1);
+} else {
+  console.error("banned-patterns: owner-name rules skipped (BANNED_NAME_PATTERNS not set)");
+}
 
 // 5. Vendor/tool/bot wording, public copy only: docs/, public/, and the string literals in files that build pages or spoken/sent copy.
 const COPY_FILES = /^(docs|public)\/.*\.(html?|md|txt|json)$|^src\/(pages|present|story|landing)\.ts$|^src\/(phone|whatsapp)\/(page|flow)\.ts$|^src\/answer\/(words|mail)\.ts$/;
@@ -100,8 +112,8 @@ for (const f of files) {
     for (const [rule, re] of SECRETS) if (re.test(ln) && !DEMO_VALUE.test(ln)) hit(f, n, `secret:${rule}`);
     if (ownerMobileIn(ln)) hit(f, n, "phone:owner-mobile");
     for (const m of ln.matchAll(AU_MOBILE)) if (!allowedMobile(m[0])) hit(f, n, "phone:unmasked-au-mobile");
-    for (const m of ln.matchAll(EMAIL)) if (!allowedEmail(m[0]) && !(f.startsWith("test/") && !OWNER_LOCAL.test(m[0]))) hit(f, n, "personal-email");
-    if (OWNER_NAME.test(ln)) hit(f, n, "public-face:owner-name");
+    for (const m of ln.matchAll(EMAIL)) if (!allowedEmail(m[0]) && !(f.startsWith("test/") && !OWNER_LOCAL?.test(m[0]))) hit(f, n, "personal-email");
+    if (OWNER_NAME?.test(ln)) hit(f, n, "public-face:owner-name");
   });
   if (COPY_FILES.test(f)) {
     const parts = f.endsWith(".ts") ? literals(text) : text.replace(/<(script|style)[\s\S]*?<\/\1>/gi, (b) => b.replace(/[^\n]/g, " ")).replace(/<[^>]*>/g, " ").split("\n").map((s, i) => ({ s, line: i + 1 }));
