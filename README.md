@@ -123,7 +123,7 @@ MIT, see LICENSE.
 
 ## Phone line (sample, not switched on)
 
-`src/phone/` adds a read-only "where's my order" phone line for Sam's Café. Nothing in it can change an order.
+`src/phone/` adds a read-only "where's my order" phone line for Gannet Street Kitchen. Nothing in it can change an order.
 
 - `POST /phone/lookup`: body `{ "orderNumber": "...", "contact": "<AU phone or email>" }`, header `x-phone-line-key`. Returns `{ match: true, status, say }` only when the contact belongs to the order, otherwise the same `{ match: false, say }` whatever was wrong. AU phone formats and email case are normalised. Limited to 30 lookups a minute, and an order number with 5 wrong tries in 15 minutes is held (same "couldn't match" answer).
 - `src/phone/flow.ts`: the call as a pure state machine (greet, order number, contact, status; change requests, "talk to someone" and two failed matches go to the owner; no answer means a message and a text to the owner).

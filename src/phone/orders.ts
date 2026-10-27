@@ -42,7 +42,7 @@ export type OrderSource = {
 };
 
 /**
- * Sam's Café sample order book for the phone line. Baked into the build, so it
+ * Gannet Street Kitchen sample order book for the phone line. Baked into the build, so it
  * is the same after every restart and redeploy (no disk, no volume).
  * Phone numbers are from ACMA's range set aside for fiction (0491 570 xxx and
  * (08) 5550 xxxx), and emails are on example.com, so none reach a real person.

@@ -139,7 +139,7 @@
     "t": 7.83,
     "text": "Hello?",
     "issue": "ok",
-    "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+    "lineReply": "Hi there, you're through to Gannet Street Kitchen. What's your order number?"
   },
   {
     "call": "call-4",
@@ -174,7 +174,7 @@
     "t": 1.78,
     "text": "Yes. (hello, before the greeting)",
     "issue": "ok",
-    "lineReply": "Hi, it's Sam's Café. What's your order number?"
+    "lineReply": "Hi, it's Gannet Street Kitchen. What's your order number?"
   },
   {
     "call": "call-5",
@@ -244,7 +244,7 @@
     "t": 13.89,
     "text": "Hello? [quiet 1201 ms before reply]",
     "issue": "ok",
-    "lineReply": "Hi there, you're through to Sam's Café. What's your order number?"
+    "lineReply": "Hi there, you're through to Gannet Street Kitchen. What's your order number?"
   },
   {
     "call": "call-6",
