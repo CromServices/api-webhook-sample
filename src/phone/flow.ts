@@ -14,7 +14,7 @@ import { STATUS_WORDS } from "./orders.ts";
  */
 
 export const OWNER_NAME = "Sam";
-export const SHOP_NAME = "Sam's Café";
+export const SHOP_NAME = "Gannet Street Kitchen";
 
 /** Tries per question before offering Sam's voicemail. */
 export const MAX_RETRIES = 2;

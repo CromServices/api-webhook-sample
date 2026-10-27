@@ -25,7 +25,7 @@ export function inboxPage(rows: readonly InboxRow[], timeZone = "Australia/Perth
       : `<li class="hand"><b>${REASON[r.handoff.reason] ?? "Needs a reply"}</b><p>“${esc(r.handoff.text)}”</p><small>${when(r.at)} · ${maskNumber(r.handoff.from)}</small></li>`,
   );
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sam's Café · WhatsApp messages</title><style>
+<title>Gannet Street Kitchen · WhatsApp messages</title><style>
 body{font:16px/1.5 system-ui,sans-serif;margin:0;background:#f6f3ee;color:#222}main{max-width:720px;margin:0 auto;padding:24px 16px}
 h1{font-size:1.4rem;margin:0 0 4px}ul{list-style:none;padding:0}li{background:#fff;border-radius:12px;padding:14px 16px;margin:12px 0;border-left:6px solid #2a7d4f}
 li.hand{border-left-color:#c77d16}p{margin:6px 0}small{color:#666}footer{color:#777;font-size:.85rem;margin-top:32px}

@@ -137,8 +137,8 @@ test("inbox needs login; rate limit per sender", async () => {
 test("new-order reply: no website line unless the shop sets an https link", () => {
   const plain = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white").replies[0]!;
   assert.doesNotMatch(plain, /website|order at/i);
-  const linked = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white", { orderUrl: "https://samscafe.example/order" }).replies[0]!;
-  assert.match(linked, /order at https:\/\/samscafe\.example\/order\./);
+  const linked = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white", { orderUrl: "https://gannetstreetkitchen.example/order" }).replies[0]!;
+  assert.match(linked, /order at https:\/\/gannetstreetkitchen\.example\/order\./);
   const bad = chatStep(src, { kind: "idle" }, OTHER, "can i order a flat white", { orderUrl: "javascript:alert(1)" }).replies[0]!;
   assert.equal(bad, plain);
 });

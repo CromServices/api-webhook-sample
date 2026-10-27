@@ -5,7 +5,7 @@ import { SHOP_INFO } from "../phone/shopinfo.ts";
 import { emailMatchesLoosely } from "../phone/normalise.ts";
 
 /**
- * WhatsApp chat flow for Sam's Café: "where's my order" replies plus enquiry
+ * WhatsApp chat flow for Gannet Street Kitchen: "where's my order" replies plus enquiry
  * (lead) capture. Pure: text in, replies + effects out. Reads orders only.
  *
  * Privacy: a status is only sent when the chat comes from the phone on the

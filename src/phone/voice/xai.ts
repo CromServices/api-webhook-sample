@@ -26,7 +26,7 @@ export type XaiOptions = {
 };
 
 const KEYTERMS = [
-  "Sam's Café", "Sam", "order number", "thousand", "forty-two", "oh", "double", "triple",
+  "Gannet Street Kitchen", "Gannet", "Sam", "order number", "thousand", "forty-two", "oh", "double", "triple",
   "voicemail", "message", "yes", "no", "mobile", "email", "at", "dot com",
 ];
 
