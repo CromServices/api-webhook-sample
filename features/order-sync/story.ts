@@ -12,7 +12,7 @@ const products = JSON.parse(
 
 export const STORY = {
   pageTitle: "Shop-to-stock order sync: sample",
-  shopName: "Sam's Café · shop and stock",
+  shopName: "Gannet Street Kitchen · shop and stock",
   h1: "Connect your systems",
   lead: "Place an order once. It shows in the online shop and in stock.",
   before: "Before",
